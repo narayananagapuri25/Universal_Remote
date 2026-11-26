@@ -28,6 +28,6 @@ Open the repository as a Gradle project. Until the Gradle Wrapper JAR is added, 
 
 ## Current implementation limits
 
-This is still an early development build, not a remote-control release. It checks built-in IR capability, includes a guarded ConsumerIrManager transmission engine and independently authored NEC, extended NEC, Samsung32 and Sony SIRC12/15/20 encoders. A model-specific profile data structure exists, but no model-specific command catalogue or user-facing appliance command has been wired to it yet. LAN/Bluetooth discovery and pairing remain unimplemented. No permissions are requested until those features are implemented.
+This is still an early development build, not a remote-control release. It checks built-in IR capability, includes a guarded ConsumerIrManager transmission engine and independently authored NEC, extended NEC, Samsung32 and Sony SIRC12/15/20 encoders. A model-specific profile data structure and bounded Flipper-compatible `.ir` import/export codec exist, including supported parsed protocol commands and raw waveform buttons. No model-specific command catalogue or user-facing appliance command has been wired to it yet; UI file-picker and actual IR receiver learning are still pending. LAN/Bluetooth discovery and pairing remain unimplemented. No permissions are requested until those features are implemented.
 
 The package ID `dev.localremote.app`, working brand name, icon and display label are provisional. Do not publish builds under this ID until branding/package clearance is complete.
