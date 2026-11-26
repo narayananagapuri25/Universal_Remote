@@ -26,6 +26,28 @@ OneRemote is a local-first, native Kotlin Android remote-control application. Th
 
 The core remote functionality must operate offline. New devices require user approval; trusted devices are rediscovered/reconnected on launch and foreground resume. Saved profiles remain until the user removes them. There is no account, household setup, mandatory cloud backend or continuous background scanning.
 
+## Android application foundation
+
+The `app/` module is the first native Android implementation foundation:
+- Kotlin with Android Gradle Plugin 9.5.3 and Gradle 9.9.1
+- Compose Material 3 UI shell with Devices, Discover and Settings
+- Room-backed local saved-device persistence
+- First-release category and command-safety domain types
+- Smart TV/set-top-box volume-routing policy with unit tests
+- GitHub Actions verification: unit tests, Android Lint and debug APK assembly
+
+The current UI intentionally does not claim device discovery, pairing or remote commands are implemented. The Discover screen states this honestly. The first build uses a provisional application ID (`dev.localremote.app`) pending product-name clearance; it must not be published under this ID before identity review.
+
+## Local build
+
+Install JDK 21, Android SDK Platform 36 and Gradle 9.9.1. Then run:
+
+```bash
+gradle clean testDebugUnitTest lintDebug assembleDebug
+```
+
+The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. This branch currently uses the Gradle installation directly (no Gradle Wrapper JAR has been committed yet); CI installs the pinned Gradle distribution explicitly.
+
 ## Approval and implementation policy
 
 1. Review the SRS, architecture, test plan and risk register.
