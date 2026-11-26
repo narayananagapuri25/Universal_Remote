@@ -9,6 +9,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ProtocolCommandDispatcherTest {
@@ -26,6 +27,41 @@ class ProtocolCommandDispatcherTest {
         assertEquals(1, transmitter.transmitCount)
         assertNotNull(transmitter.lastSignal)
         assertEquals(38_000, transmitter.lastSignal?.carrierFrequencyHz)
+    }
+
+    @Test
+    fun rawWaveformIsValidatedAndDispatched() = runBlocking {
+        val transmitter = FakeTransmitter()
+        val dispatcher = ProtocolCommandDispatcher(transmitter)
+        val raw = IrCommandSpec.Raw(
+            dev.localremote.app.connectivity.infrared.IrSignal(
+                38_000,
+                listOf(900, 450, 560, 560, 560)
+            )
+        )
+
+        val result = dispatcher.dispatch(raw)
+
+        assertEquals(IrTransmitResult.Sent(3_030), result)
+        assertEquals(1, transmitter.transmitCount)
+        assertEquals(raw.signal, transmitter.lastSignal)
+    }
+
+    @Test
+    fun invalidRawWaveformIsRejectedBeforeTransmission() = runBlocking {
+        val transmitter = FakeTransmitter()
+        val dispatcher = ProtocolCommandDispatcher(transmitter)
+        val raw = IrCommandSpec.Raw(
+            dev.localremote.app.connectivity.infrared.IrSignal(
+                38_000,
+                listOf(900, 0, 560)
+            )
+        )
+
+        val result = dispatcher.dispatch(raw)
+
+        assertTrue(result is IrTransmitResult.Rejected)
+        assertEquals(0, transmitter.transmitCount)
     }
 
     @Test
