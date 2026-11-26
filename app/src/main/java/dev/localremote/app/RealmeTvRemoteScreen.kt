@@ -60,6 +60,9 @@ fun RealmeTvRemoteScreen() {
     var status by remember { mutableStateOf("Find your TV on the same Wi-Fi network.") }
     var powerState by remember { mutableStateOf<String?>(null) }
     var volumeState by remember { mutableStateOf<String?>(null) }
+    var textInputAvailable by remember { mutableStateOf(false) }
+    var textInputHint by remember { mutableStateOf("TV text input") }
+    var textToSend by rememberSaveable { mutableStateOf("") }
 
     DisposableEffect(discovery) {
         discovery.start(
@@ -73,9 +76,9 @@ fun RealmeTvRemoteScreen() {
     }
 
     DisposableEffect(session) {
+        val activeSession = session
         onDispose {
-            session?.close()
-            connected = false
+            activeSession?.close()
         }
     }
 
@@ -115,6 +118,10 @@ fun RealmeTvRemoteScreen() {
                             } else {
                                 if (muted) "Muted" else "Volume information received"
                             }
+                        },
+                        onTextInputState = { available, label ->
+                            textInputAvailable = available
+                            textInputHint = label
                         }
                     )
                 }
@@ -206,6 +213,25 @@ fun RealmeTvRemoteScreen() {
                 withContext(Dispatchers.IO) { active.sendKey(code) }
             }.onFailure { failure ->
                 updateConnectionStatus(failure.message ?: "The TV did not accept this key.")
+            }
+        }
+    }
+
+    fun sendText() {
+        val active = session
+        val value = textToSend
+        if (!connected || !textInputAvailable || active == null) {
+            status = "Open a text field on the TV before sending text."
+            return
+        }
+        scope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { active.sendText(value) }
+            }.onSuccess {
+                textToSend = ""
+                status = "Text sent to the active TV text field."
+            }.onFailure { failure ->
+                status = failure.message ?: "Text could not be sent to the TV."
             }
         }
     }
@@ -318,6 +344,9 @@ fun RealmeTvRemoteScreen() {
                         connected = false
                         powerState = null
                         volumeState = null
+                        textInputAvailable = false
+                        textInputHint = "TV text input"
+                        textToSend = ""
                         status = "Saved TV pairing removed from this phone."
                     }) { Text("Forget") }
                 }
@@ -430,6 +459,38 @@ fun RealmeTvRemoteScreen() {
                     TvKeyButton("Play / Pause", 85, connected, ::sendKey, Modifier.weight(1f))
                     TvKeyButton("Stop", 86, connected, ::sendKey, Modifier.weight(1f))
                     TvKeyButton("⏭", 90, connected, ::sendKey, Modifier.weight(1f))
+                }
+            }
+        }
+
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Keyboard input", fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (textInputAvailable) {
+                        "Text field detected on TV. Type on your phone and send it to the TV."
+                    } else {
+                        "Open Search or another text field on the TV. Keyboard entry becomes available when the TV exposes its text-input field."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = textToSend,
+                    onValueChange = { textToSend = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = connected && textInputAvailable,
+                    label = { Text(textInputHint) },
+                    placeholder = { Text("Type a search or message") },
+                    minLines = 1,
+                    maxLines = 4
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = ::sendText,
+                        enabled = connected && textInputAvailable && textToSend.isNotBlank()
+                    ) { Text("Send text") }
+                    OutlinedButton(onClick = { textToSend = "" }) { Text("Clear") }
                 }
             }
         }

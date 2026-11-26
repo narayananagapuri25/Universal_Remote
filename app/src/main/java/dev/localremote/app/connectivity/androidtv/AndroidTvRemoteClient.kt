@@ -600,9 +600,11 @@ class AndroidTvRemoteSession internal constructor(
                 val appInfo = ProtoReader.parse(appInfoBytes)
                 val fieldStatus = ProtoReader.parse(fieldStatusBytes)
                 val imeValue = ProtoReader.firstNumber(appInfo, 1)?.toInt() ?: 0
-                val fieldValue = ProtoReader.firstNumber(fieldStatus, 1)?.toInt()
+                val fieldValue = ProtoReader.firstNumber(fieldStatus, 1)?.toInt() ?: 0
                 val label = ProtoReader.firstBytes(fieldStatus, 6)
                     ?.toString(Charsets.UTF_8)?.take(80)?.takeIf { it.isNotBlank() }
+                // Proto3 omits default numeric zero values. The presence of this
+                // focused-field notification is sufficient to treat zero as valid.
                 updateImeState(imeValue, fieldValue, label)
             }
             return
@@ -614,7 +616,7 @@ class AndroidTvRemoteSession internal constructor(
             val fieldStatusBytes = ProtoReader.firstBytes(requestFields, 2)
             if (fieldStatusBytes != null) {
                 val fieldStatus = ProtoReader.parse(fieldStatusBytes)
-                val fieldValue = ProtoReader.firstNumber(fieldStatus, 1)?.toInt()
+                val fieldValue = ProtoReader.firstNumber(fieldStatus, 1)?.toInt() ?: 0
                 val label = ProtoReader.firstBytes(fieldStatus, 6)
                     ?.toString(Charsets.UTF_8)?.take(80)?.takeIf { it.isNotBlank() }
                 updateImeState(fieldCounter = fieldValue, label = label)
