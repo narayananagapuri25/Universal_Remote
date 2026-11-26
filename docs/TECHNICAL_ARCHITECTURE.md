@@ -161,7 +161,7 @@ A capability router selects a viable `(protocol, transport)` pair using model pr
 
 ### 7.1 Built-in IR
 
-Use `ConsumerIrManager` only after checking `PackageManager.FEATURE_CONSUMER_IR`, `hasIrEmitter()` and `getCarrierFrequencies()`. Its public API transmits alternating on/off microsecond timings at a selected carrier frequency and documents a maximum pattern duration under two seconds. It does not expose a general IR receive/learning API. Therefore, IR learning requires a supported external receiver/accessory; a built-in transmitter alone is insufficient.
+Use `ConsumerIrManager` only after checking `PackageManager.FEATURE_CONSUMER_IR`, `hasIrEmitter()` and `getCarrierFrequencies()`. Its public API transmits alternating on/off microsecond timings at a selected carrier frequency and accepts patterns shorter than two seconds. It does not expose a general IR receive/learning API. Therefore, IR learning requires a supported external receiver/accessory; a built-in transmitter alone is insufficient.\n\nThe first implementation now includes `AndroidConsumerIrDriver` and `BuiltInIrTransmitter`. It checks the optional consumer-IR feature, reports the actual carrier-frequency ranges, validates positive carrier frequency and pulse durations, caps signal segments, rejects unknown carrier ranges and enforces the platform's under-two-second limit. Transmits are dispatched on an IO coroutine and serialised through a mutex because the built-in emitter is a shared half-duplex resource. The result `Sent` means Android's synchronous transmit call returned; it never means the appliance state was confirmed. Pure unit tests use a fake driver. Physical transmission still needs a phone with a built-in emitter and a verified device profile.
 
 ### 7.2 External IR
 
