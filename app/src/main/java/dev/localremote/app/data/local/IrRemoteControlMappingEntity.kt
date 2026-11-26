@@ -9,14 +9,14 @@ import androidx.room.Index
     primaryKeys = ["profileId", "role"],
     foreignKeys = [
         ForeignKey(
-            entity = IrRemoteProfileEntity::class,
-            parentColumns = ["profileId"],
-            childColumns = ["profileId"],
+            entity = IrRemoteButtonEntity::class,
+            parentColumns = ["profileId", "buttonId"],
+            childColumns = ["profileId", "buttonId"],
             onDelete = ForeignKey.CASCADE,
             onUpdate = ForeignKey.NO_ACTION
         )
     ],
-    indices = [Index(value = ["profileId"])]
+    indices = [Index(value = ["profileId", "buttonId"])]
 )
 data class IrRemoteControlMappingEntity(
     val profileId: String,
