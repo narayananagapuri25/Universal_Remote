@@ -33,11 +33,17 @@ The `app/` module is the first native Android implementation foundation:
 - Minimum Android API 26; compile SDK API 37.2; target SDK API 36
 - Compose Material 3 UI shell with Devices, Discover and Settings
 - Room-backed local saved-device persistence
-- First-release category and command-safety domain types\n- Built-in IR capability inspection, carrier-range validation and guarded transmit adapter with unit tests
+- First-release category and command-safety domain types
+- Independently authored NEC, extended NEC, Samsung32 and Sony SIRC12/15/20 protocol encoders with golden-vector tests
+- Model-specific IR profile/button model with per-command compatibility evidence and validator
+- One-shot protocol dispatcher connected to the guarded transmitter
+- Built-in IR capability inspection, carrier-range validation and guarded transmit adapter with unit tests
 - Smart TV/set-top-box volume-routing policy with unit tests
 - GitHub Actions verification: unit tests, Android Lint and debug APK assembly
 
-The current UI does not claim LAN/Bluetooth discovery, pairing, model-specific device profiles or appliance remote controls are implemented. The Discover screen reports built-in IR capability without transmitting a signal during setup. The first build uses a provisional application ID (`dev.localremote.app`) pending product-name clearance; it must not be published under this ID before identity review.
+The app now has a model-specific IR profile data model and protocol encoders, but no bundled brand/model command catalogue or completed user-facing appliance remote yet. LAN/Bluetooth discovery and pairing remain unimplemented. The Discover screen reports built-in IR capability without transmitting a signal during setup. The first build uses a provisional application ID (`dev.localremote.app`) pending product-name clearance; it must not be published under this ID before identity review.
+
+See [IR protocol implementation and data policy](docs/PROTOCOL_IMPLEMENTATION.md) for supported encoder families, code-data licensing rules and compatibility evidence requirements.
 
 ## Local build
 
