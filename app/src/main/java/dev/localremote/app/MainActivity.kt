@@ -21,6 +21,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -32,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,9 +55,13 @@ import dev.localremote.app.connectivity.infrared.IrTransmitResult
 import dev.localremote.app.connectivity.infrared.importexport.FlipperIrFileCodec
 import dev.localremote.app.connectivity.infrared.protocol.IrRemoteProfile
 import dev.localremote.app.connectivity.infrared.protocol.IrRemoteButton
+import dev.localremote.app.connectivity.infrared.protocol.RemoteControlMapping
+import dev.localremote.app.connectivity.infrared.protocol.RemoteControlRole
 import dev.localremote.app.core.model.DeviceCategory
 import dev.localremote.app.data.local.SavedDeviceEntity
 import dev.localremote.app.data.local.DaikinAcProfileDao
+import dev.localremote.app.data.local.IrRemoteProfileDao
+import dev.localremote.app.data.local.RemoteControlMappingMapper
 import dev.localremote.app.data.local.DaikinAcProfileEntity
 import dev.localremote.app.data.local.SavedIrProfileRepository
 import dev.localremote.app.platform.infrared.AndroidConsumerIrDriver
@@ -120,7 +127,8 @@ class MainActivity : ComponentActivity() {
                     daikinDispatcher = remember(irTransmitter) {
                         DaikinAcCommandDispatcher(irTransmitter)
                     },
-                    daikinProfileDao = app.database.daikinAcProfileDao()
+                    daikinProfileDao = app.database.daikinAcProfileDao(),
+                    irProfileDao = app.database.irRemoteProfileDao()
                 )
             }
         }
@@ -135,7 +143,8 @@ private fun OneRemoteApp(
     profileRepository: SavedIrProfileRepository,
     dispatcher: ProtocolCommandDispatcher,
     daikinDispatcher: DaikinAcCommandDispatcher,
-    daikinProfileDao: DaikinAcProfileDao
+    daikinProfileDao: DaikinAcProfileDao,
+    irProfileDao: IrRemoteProfileDao
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -327,7 +336,8 @@ private fun OneRemoteApp(
                                 .ifBlank { "OneRemote" }
                             createIrDocument.launch("$safeName.ir")
                         },
-                        exportMessage = exportMessage
+                        exportMessage = exportMessage,
+                        controlMappingDao = irProfileDao
                     )
                 }
             } else {
@@ -793,11 +803,64 @@ private fun RemoteScreen(
     irHardware: IrHardwareStatus?,
     dispatcher: ProtocolCommandDispatcher,
     onExport: () -> Unit,
-    exportMessage: String?
+    exportMessage: String?,
+    controlMappingDao: IrRemoteProfileDao
 ) {
     val scope = rememberCoroutineScope()
+    val savedMappingEntities by controlMappingDao
+        .observeControlMappings(profile.profileId)
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val availableButtons = remember(profile.buttons) {
+        profile.buttons.associateBy { it.id }
+    }
+    val restoredMappings = remember(savedMappingEntities, profile.category, profile.buttons) {
+        runCatching {
+            RemoteControlMappingMapper.fromEntities(
+                category = profile.category,
+                availableButtonIds = availableButtons.keys,
+                entities = savedMappingEntities
+            )
+        }
+    }
+    val mappings = restoredMappings.getOrNull().orEmpty()
+    val mappingByRole = mappings.associateBy { it.role }
+
     var sendingButtonId by remember { mutableStateOf<String?>(null) }
     var sendFeedback by remember { mutableStateOf<String?>(null) }
+    var editingLayout by rememberSaveable(profile.profileId) { mutableStateOf(false) }
+    var draftMappings by remember(profile.profileId) {
+        mutableStateOf<Map<RemoteControlRole, String>>(emptyMap())
+    }
+    var expandedRole by remember { mutableStateOf<RemoteControlRole?>(null) }
+    var layoutSaving by remember { mutableStateOf(false) }
+    var layoutFeedback by remember { mutableStateOf<String?>(null) }
+
+    val supportedRoles = RemoteControlRole.forCategory(profile.category)
+    val navigationRoles = listOf(
+        RemoteControlRole.UP,
+        RemoteControlRole.LEFT,
+        RemoteControlRole.OK,
+        RemoteControlRole.RIGHT,
+        RemoteControlRole.DOWN
+    )
+
+    fun sendButton(button: IrRemoteButton) {
+        if (sendingButtonId != null) return
+        sendingButtonId = button.id
+        sendFeedback = null
+        scope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    dispatcher.dispatch(button.command)
+                }
+            }
+            sendFeedback = result.fold(
+                onSuccess = { transmitResultMessage(it) },
+                onFailure = { it.message ?: "Transmission failed." }
+            )
+            sendingButtonId = null
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -827,6 +890,7 @@ private fun RemoteScreen(
                 )
             }
         }
+
         item {
             Button(onClick = onExport, modifier = Modifier.fillMaxWidth()) {
                 Text("Export remote (.ir)")
@@ -839,31 +903,311 @@ private fun RemoteScreen(
                 )
             }
         }
+
+        if (profile.category == DeviceCategory.TELEVISION ||
+            profile.category == DeviceCategory.SET_TOP_BOX
+        ) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    if (profile.category == DeviceCategory.TELEVISION) {
+                                        "TV control layout"
+                                    } else {
+                                        "Set-top box control layout"
+                                    },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    "Only commands you assign below are enabled.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    draftMappings = mappings.associate {
+                                        it.role to it.buttonId
+                                    }
+                                    editingLayout = !editingLayout
+                                    expandedRole = null
+                                    layoutFeedback = null
+                                },
+                                enabled = !layoutSaving
+                            ) {
+                                Text(if (editingLayout) "Close editor" else "Customize")
+                            }
+                        }
+
+                        if (restoredMappings.isFailure) {
+                            Text(
+                                restoredMappings.exceptionOrNull()?.message
+                                    ?: "Saved control layout is invalid. Reconfigure it before use.",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+
+                        if (editingLayout) {
+                            Text(
+                                "Assign each role to the imported command that you know performs that action. OneRemote does not infer command meaning from the imported label.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            supportedRoles.forEach { role ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        role.label,
+                                        modifier = Modifier.weight(1f),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    BoxForDropdown(
+                                        label = draftMappings[role]?.let { availableButtons[it]?.label }
+                                            ?: "Choose command",
+                                        expanded = expandedRole == role,
+                                        onClick = { expandedRole = role },
+                                        onDismiss = { expandedRole = null }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Not assigned") },
+                                            onClick = {
+                                                draftMappings = draftMappings - role
+                                                expandedRole = null
+                                            }
+                                        )
+                                        profile.buttons.forEach { button ->
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Column {
+                                                        Text(button.label)
+                                                        Text(
+                                                            button.evidence.status.name
+                                                                .replace('_', ' ')
+                                                                .lowercase()
+                                                                .replaceFirstChar { it.uppercase() },
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                },
+                                                onClick = {
+                                                    draftMappings = draftMappings + (role to button.id)
+                                                    expandedRole = null
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = {
+                                        val requested = draftMappings.map { (role, buttonId) ->
+                                            RemoteControlMapping(role, buttonId)
+                                        }
+                                        val entities = runCatching {
+                                            RemoteControlMappingMapper.toEntities(
+                                                profileId = profile.profileId,
+                                                category = profile.category,
+                                                availableButtonIds = availableButtons.keys,
+                                                mappings = requested
+                                            )
+                                        }
+                                        entities.onSuccess { records ->
+                                            layoutSaving = true
+                                            layoutFeedback = null
+                                            scope.launch {
+                                                val result = runCatching {
+                                                    withContext(Dispatchers.IO) {
+                                                        controlMappingDao.replaceControlMappings(
+                                                            profile.profileId,
+                                                            records
+                                                        )
+                                                    }
+                                                }
+                                                layoutSaving = false
+                                                if (result.isSuccess) {
+                                                    editingLayout = false
+                                                    layoutFeedback = "Remote layout saved on this phone."
+                                                } else {
+                                                    layoutFeedback = result.exceptionOrNull()?.message
+                                                        ?: "Could not save the remote layout."
+                                                }
+                                            }
+                                        }.onFailure {
+                                            layoutFeedback = it.message
+                                                ?: "The selected control mapping is invalid."
+                                        }
+                                    },
+                                    enabled = !layoutSaving
+                                ) {
+                                    Text(if (layoutSaving) "Saving…" else "Save layout")
+                                }
+                                TextButton(
+                                    onClick = {
+                                        draftMappings = mappings.associate {
+                                            it.role to it.buttonId
+                                        }
+                                        editingLayout = false
+                                        expandedRole = null
+                                        layoutFeedback = null
+                                    },
+                                    enabled = !layoutSaving
+                                ) {
+                                    Text("Cancel")
+                                }
+                            }
+                        } else {
+                            if (supportedRoles.isEmpty()) {
+                                Text(
+                                    "This device category uses its dedicated control screen.",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            } else if (mappings.isEmpty()) {
+                                Text(
+                                    "No TV/STB controls have been assigned yet. Choose Customize and map imported commands to the controls you have verified on your original remote.",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            } else {
+                                Text(
+                                    "Navigation",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                RoleButtonRow(
+                                    role = RemoteControlRole.UP,
+                                    button = availableButtons[mappingByRole[RemoteControlRole.UP]?.buttonId],
+                                    busy = sendingButtonId != null,
+                                    onSend = { button -> sendButton(button) }
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    RoleButton(
+                                        role = RemoteControlRole.LEFT,
+                                        button = availableButtons[mappingByRole[RemoteControlRole.LEFT]?.buttonId],
+                                        busy = sendingButtonId != null,
+                                        onSend = ::sendButton,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    RoleButton(
+                                        role = RemoteControlRole.OK,
+                                        button = availableButtons[mappingByRole[RemoteControlRole.OK]?.buttonId],
+                                        busy = sendingButtonId != null,
+                                        onSend = ::sendButton,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    RoleButton(
+                                        role = RemoteControlRole.RIGHT,
+                                        button = availableButtons[mappingByRole[RemoteControlRole.RIGHT]?.buttonId],
+                                        busy = sendingButtonId != null,
+                                        onSend = ::sendButton,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                RoleButtonRow(
+                                    role = RemoteControlRole.DOWN,
+                                    button = availableButtons[mappingByRole[RemoteControlRole.DOWN]?.buttonId],
+                                    busy = sendingButtonId != null,
+                                    onSend = { button -> sendButton(button) }
+                                )
+
+                                supportedRoles
+                                    .filter { it !in navigationRoles }
+                                    .groupBy { it.group }
+                                    .forEach { (group, roles) ->
+                                        Text(
+                                            when (group) {
+                                                RemoteControlRole.Group.SYSTEM -> "System and source"
+                                                RemoteControlRole.Group.VOLUME -> "Volume"
+                                                RemoteControlRole.Group.CHANNEL -> "Channels"
+                                                RemoteControlRole.Group.NUMERIC -> "Number pad"
+                                                RemoteControlRole.Group.PLAYBACK -> "Playback"
+                                                RemoteControlRole.Group.NAVIGATION -> "Navigation"
+                                            },
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        roles.chunked(2).forEach { rowRoles ->
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                rowRoles.forEach { role ->
+                                                    RoleButton(
+                                                        role = role,
+                                                        button = availableButtons[mappingByRole[role]?.buttonId],
+                                                        busy = sendingButtonId != null,
+                                                        onSend = ::sendButton,
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                }
+                                                if (rowRoles.size == 1) {
+                                                    Spacer(Modifier.weight(1f))
+                                                }
+                                            }
+                                        }
+                                    }
+                            }
+                        }
+
+                        if (!layoutFeedback.isNullOrBlank()) {
+                            Text(
+                                layoutFeedback.orEmpty(),
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Text(
+                            "A role assignment changes the button layout only. It does not verify the imported IR command or the appliance model.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            Text(
+                "All imported commands",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                "Original imported commands remain available below, including commands not assigned to the custom layout.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         items(profile.buttons, key = { it.id }) { button ->
             RemoteButtonCard(
                 button = button,
                 isSending = sendingButtonId == button.id,
                 canSend = sendingButtonId == null,
-                onSend = {
-                    if (sendingButtonId == null) {
-                        sendingButtonId = button.id
-                        sendFeedback = null
-                        scope.launch {
-                            val result = runCatching {
-                                withContext(Dispatchers.IO) {
-                                    dispatcher.dispatch(button.command)
-                                }
-                            }
-                            sendFeedback = result.fold(
-                                onSuccess = { transmitResultMessage(it) },
-                                onFailure = { it.message ?: "Transmission failed." }
-                            )
-                            sendingButtonId = null
-                        }
-                    }
-                }
+                onSend = { sendButton(button) }
             )
         }
+
         if (!sendFeedback.isNullOrBlank()) {
             item {
                 Card(
@@ -886,6 +1230,67 @@ private fun RemoteScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun BoxForDropdown(
+    label: String,
+    expanded: Boolean,
+    onClick: () -> Unit,
+    onDismiss: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Column {
+        OutlinedButton(onClick = onClick) {
+            Text(label)
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = onDismiss,
+            content = content
+        )
+    }
+}
+
+@Composable
+private fun RoleButtonRow(
+    role: RemoteControlRole,
+    button: IrRemoteButton?,
+    busy: Boolean,
+    onSend: (IrRemoteButton) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        RoleButton(
+            role = role,
+            button = button,
+            busy = busy,
+            onSend = onSend,
+            modifier = Modifier.fillMaxWidth(0.42f)
+        )
+    }
+}
+
+@Composable
+private fun RoleButton(
+    role: RemoteControlRole,
+    button: IrRemoteButton?,
+    busy: Boolean,
+    onSend: (IrRemoteButton) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = { button?.let(onSend) },
+        enabled = button != null && !busy,
+        modifier = modifier
+    ) {
+        Text(
+            if (button == null) "Assign ${role.label}" else role.label,
+            style = MaterialTheme.typography.labelLarge
+        )
     }
 }
 
