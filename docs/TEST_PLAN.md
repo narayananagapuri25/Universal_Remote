@@ -36,6 +36,7 @@ The first implementation branch now has deterministic unit coverage for built-in
 - TV/STB key mapping, channel list parsing and source selection.
 - IR code parsing, carrier/timing bounds, repeat frames and truncation rejection.
 - Golden-vector tests for NEC, extended NEC, Samsung32 and Sony SIRC12/15/20 timing, payload bit order, field boundaries and invalid values.
+- Daikin AC saved-profile mapping round trips for both transport variants, all exposed state flags, invalid enum values, invalid temperatures, and bounded display names.
 - Device-profile validation for unique button IDs, evidence references, physical test-record requirements and raw waveform validity.
 - Flipper `.ir` importer/exporter: header/version validation, bounded file/button/line sizes, duplicate and unknown field rejection, four-byte little-endian values, protocol field bounds, raw timing count <= 1,024, duty-cycle metadata, unsupported parsed protocols, and import/export round-trip fixtures.
 - Protocol/raw dispatch tests proving one encode/one transmit and no retry; invalid raw patterns must be rejected before hardware access.
@@ -52,7 +53,7 @@ Use protocol golden vectors with source/provenance. Where practical, include bot
 ### 2.3 Data and integration tests
 
 - Room DAO/repository persistence and observed Flow updates.
-- All database migrations from previous shipped schema versions.
+- All database migrations from previous shipped schema versions, including the Room 2-to-3 Daikin profile table migration and preservation of existing IR/device records.
 - App process death/restart and local DB corruption handling.
 - Profile/custom overlay preservation after catalogue update.
 - Backup/restore across app versions and simulated new-device restore.
