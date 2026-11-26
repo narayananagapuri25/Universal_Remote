@@ -63,3 +63,18 @@ sealed interface IrProtocolCommand {
         }
     }
 }
+
+
+/**
+ * A saved remote button can use a decoded protocol command or a raw waveform
+ * captured/imported from a compatible external receiver/database.
+ */
+sealed interface IrCommandSpec {
+    data class Protocol(
+        val command: IrProtocolCommand
+    ) : IrCommandSpec
+
+    data class Raw(
+        val signal: dev.localremote.app.connectivity.infrared.IrSignal
+    ) : IrCommandSpec
+}
