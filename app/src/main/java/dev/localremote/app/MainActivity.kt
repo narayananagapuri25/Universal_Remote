@@ -54,6 +54,7 @@ import dev.localremote.app.connectivity.infrared.protocol.IrRemoteProfile
 import dev.localremote.app.connectivity.infrared.protocol.IrRemoteButton
 import dev.localremote.app.core.model.DeviceCategory
 import dev.localremote.app.data.local.SavedDeviceEntity
+import dev.localremote.app.data.local.DaikinAcProfileDao
 import dev.localremote.app.data.local.SavedIrProfileRepository
 import dev.localremote.app.platform.infrared.AndroidConsumerIrDriver
 import dev.localremote.app.platform.infrared.BuiltInIrTransmitter
@@ -117,7 +118,8 @@ class MainActivity : ComponentActivity() {
                     },
                     daikinDispatcher = remember(irTransmitter) {
                         DaikinAcCommandDispatcher(irTransmitter)
-                    }
+                    },
+                    daikinProfileDao = app.database.daikinAcProfileDao()
                 )
             }
         }
@@ -131,7 +133,8 @@ private fun OneRemoteApp(
     irHardware: IrHardwareStatus?,
     profileRepository: SavedIrProfileRepository,
     dispatcher: ProtocolCommandDispatcher,
-    daikinDispatcher: DaikinAcCommandDispatcher
+    daikinDispatcher: DaikinAcCommandDispatcher,
+    daikinProfileDao: DaikinAcProfileDao
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -291,7 +294,8 @@ private fun OneRemoteApp(
             if (openDaikinAc) {
                 DaikinAcRemoteScreen(
                     irHardware = irHardware,
-                    dispatcher = daikinDispatcher
+                    dispatcher = daikinDispatcher,
+                    profileDao = daikinProfileDao
                 )
             } else if (openProfileId != null) {
                 when (val remote = currentRemoteState) {
