@@ -25,14 +25,19 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.localremote.app.connectivity.infrared.IrHardwareStatus
 import dev.localremote.app.data.local.SavedDeviceEntity
+import dev.localremote.app.platform.infrared.AndroidConsumerIrDriver
+import dev.localremote.app.platform.infrared.BuiltInIrTransmitter
 
 private enum class Destination(val label: String) {
     DEVICES("Devices"),
@@ -51,6 +56,16 @@ class MainActivity : ComponentActivity() {
                     .observeAll()
                     .collectAsStateWithLifecycle(initialValue = emptyList())
 
+                val irTransmitter = remember {
+                    BuiltInIrTransmitter(AndroidConsumerIrDriver(applicationContext))
+                }
+                val irHardware by produceState<IrHardwareStatus?>(
+                    initialValue = null,
+                    key1 = irTransmitter
+                ) {
+                    value = irTransmitter.inspect()
+                }
+
                 var destination by rememberSaveable {
                     mutableStateOf(Destination.DEVICES)
                 }
@@ -58,6 +73,7 @@ class MainActivity : ComponentActivity() {
                 OneRemoteApp(
                     destination = destination,
                     savedDevices = savedDevices,
+                    irHardware = irHardware,
                     onDestinationSelected = { destination = it }
                 )
             }
@@ -70,6 +86,7 @@ class MainActivity : ComponentActivity() {
 private fun OneRemoteApp(
     destination: Destination,
     savedDevices: List<SavedDeviceEntity>,
+    irHardware: IrHardwareStatus?,
     onDestinationSelected: (Destination) -> Unit
 ) {
     Scaffold(
@@ -101,7 +118,7 @@ private fun OneRemoteApp(
         ) {
             when (destination) {
                 Destination.DEVICES -> DevicesScreen(savedDevices)
-                Destination.DISCOVER -> DiscoverScreen()
+                Destination.DISCOVER -> DiscoverScreen(irHardware)
                 Destination.SETTINGS -> SettingsScreen()
             }
         }
@@ -190,7 +207,7 @@ private fun DevicesScreen(devices: List<SavedDeviceEntity>) {
 }
 
 @Composable
-private fun DiscoverScreen() {
+private fun DiscoverScreen(irHardware: IrHardwareStatus?) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -203,10 +220,47 @@ private fun DiscoverScreen() {
             fontWeight = FontWeight.SemiBold
         )
         Text(
-            "Device discovery is being built. This version has not run a network scan or Bluetooth pairing.",
+            "Built-in infrared hardware is checked on this phone. Network and Bluetooth discovery are still under development.",
             style = MaterialTheme.typography.bodyLarge
         )
-        Card {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            )
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text("Built-in IR transmitter", style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(8.dp))
+                when {
+                    irHardware == null -> Text("Checking phone hardware…")
+                    !irHardware.transmitterAvailable -> Text(
+                        irHardware.diagnostic ?: "No built-in IR transmitter is available."
+                    )
+                    irHardware.supportedCarrierRanges.isEmpty() -> Text(
+                        irHardware.diagnostic
+                            ?: "IR hardware detected, but carrier-frequency support could not be verified."
+                    )
+                    else -> {
+                        Text("Transmitter detected")
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            irHardware.supportedCarrierRanges.joinToString { range ->
+                                "${range.minHz / 1_000f}–${range.maxHz / 1_000f} kHz"
+                            },
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        }
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            )
+        ) {
             Column(Modifier.padding(16.dp)) {
                 Text("First-release categories", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
@@ -216,7 +270,7 @@ private fun DiscoverScreen() {
             }
         }
         Text(
-            "The next implementation stage adds permission-aware discovery and guided IR setup. Unsupported devices will not be shown as connected.",
+            "The IR transmission engine now validates patterns and carrier frequencies before using Android's built-in transmitter. No appliance command is sent during hardware inspection. IR learning still requires a compatible external receiver.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
