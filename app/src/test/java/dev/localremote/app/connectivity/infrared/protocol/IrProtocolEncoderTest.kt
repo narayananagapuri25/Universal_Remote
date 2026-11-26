@@ -33,13 +33,18 @@ class IrProtocolEncoderTest {
         assertEquals(67, signal.patternMicros.size)
         // Flipper .ir stores both 16-bit payload values little-endian:
         // address EE 87 00 00, command 5D A0 00 00.
+        val bitSpaces = signal.patternMicros.subList(3, 67)
+            .filterIndexed { index, _ -> index % 2 == 0 }
         assertEquals(
-            listOf(560, 560, 560, 560, 560, 560, 560, 1_690),
-            signal.patternMicros.subList(2, 18).filterIndexed { index, _ -> index % 2 == 0 }
-        )
-        assertEquals(
-            listOf(1_690, 560, 1_690, 1_690, 560, 1_690, 560, 560),
-            signal.patternMicros.subList(18, 34).filterIndexed { index, _ -> index % 2 == 0 }
+            listOf(
+                // Address EE 87, LSB first.
+                560, 1_690, 1_690, 1_690, 560, 1_690, 1_690, 1_690,
+                1_690, 1_690, 1_690, 560, 560, 560, 560, 1_690,
+                // Command 5D A0, LSB first.
+                1_690, 560, 1_690, 1_690, 1_690, 560, 1_690, 560,
+                560, 560, 560, 560, 560, 1_690, 560, 1_690
+            ),
+            bitSpaces
         )
         assertEquals(null, IrSignalValidator.validate(signal))
     }
