@@ -26,6 +26,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,7 +58,8 @@ import kotlin.math.roundToInt
 internal fun DaikinAcRemoteScreen(
     irHardware: IrHardwareStatus?,
     dispatcher: DaikinAcCommandDispatcher,
-    profileDao: DaikinAcProfileDao
+    profileDao: DaikinAcProfileDao,
+    initialProfileId: String? = null
 ) {
     val scope = rememberCoroutineScope()
     val savedProfiles by profileDao.observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
@@ -81,6 +83,35 @@ internal fun DaikinAcRemoteScreen(
     var powerful by rememberSaveable { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
     var feedback by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(initialProfileId) {
+        val requestedProfileId = initialProfileId ?: return@LaunchedEffect
+        val result = runCatching {
+            val profile = profileDao.getById(requestedProfileId)
+                ?: error("This saved AC profile is no longer available.")
+            profile to DaikinAcProfileMapper.toState(profile)
+        }
+        result.onSuccess { (profile, state) ->
+            activeProfileId = profile.profileId
+            profileName = profile.displayName
+            powerOn = state.power
+            mode = state.mode
+            temperature = state.temperatureCelsius
+            fanSpeed = state.fanSpeed
+            verticalSwing = state.verticalSwing
+            horizontalSwing = state.horizontalSwing
+            intelligentEye = state.intelligentEye
+            econo = state.econo
+            outdoorQuiet = state.outdoorQuiet
+            powerful = state.powerful
+            variantName = state.variant.name
+            familyConfirmed = false
+            feedback = null
+            profileFeedback = "Profile loaded. Check the original remote marking and confirm its family before sending."
+        }.onFailure {
+            profileFeedback = it.message ?: "Could not load this saved AC profile."
+        }
+    }
 
     val variant = variantName?.let { DaikinAcTransportVariant.valueOf(it) }
     val temperatureRange = temperatureRangeFor(mode)
