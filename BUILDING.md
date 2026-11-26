@@ -3,7 +3,8 @@
 ## Prerequisites
 
 - JDK 21
-- Android SDK Platform 36
+- Android SDK Platform API 37.2
+- Android SDK Platform API 36 (target SDK)
 - Android SDK Build Tools 36.0.0
 - Gradle 9.9.1
 - Network access for first-time dependency resolution only
