@@ -31,12 +31,12 @@ abstract class OneRemoteDatabase : RoomDatabase() {
                         `role` TEXT NOT NULL,
                         `buttonId` TEXT NOT NULL,
                         PRIMARY KEY(`profileId`, `role`),
-                        FOREIGN KEY(`profileId`) REFERENCES `ir_remote_profiles`(`profileId`) ON UPDATE NO ACTION ON DELETE CASCADE
+                        FOREIGN KEY(`profileId`, `buttonId`) REFERENCES `ir_remote_buttons`(`profileId`, `buttonId`) ON UPDATE NO ACTION ON DELETE CASCADE
                     )
                     """.trimIndent()
                 )
                 database.execSQL(
-                    "CREATE INDEX IF NOT EXISTS `index_ir_remote_control_mappings_profileId` ON `ir_remote_control_mappings` (`profileId`)"
+                    "CREATE INDEX IF NOT EXISTS `index_ir_remote_control_mappings_profileId_buttonId` ON `ir_remote_control_mappings` (`profileId`, `buttonId`)"
                 )
             }
         }
