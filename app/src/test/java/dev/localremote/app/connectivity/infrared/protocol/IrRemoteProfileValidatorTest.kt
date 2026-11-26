@@ -74,6 +74,59 @@ class IrRemoteProfileValidatorTest {
     }
 
     @Test
+    fun acceptsValidRawWaveformButton() {
+        val profile = IrRemoteProfile(
+            profileId = "custom-ir",
+            category = DeviceCategory.TELEVISION,
+            brand = "User created",
+            model = null,
+            displayName = "Custom TV Remote",
+            buttons = listOf(
+                IrRemoteButton(
+                    id = "power",
+                    label = "Power",
+                    command = IrCommandSpec.Raw(
+                        dev.localremote.app.connectivity.infrared.IrSignal(
+                            38_000,
+                            listOf(900, 450, 560, 560, 560)
+                        )
+                    )
+                )
+            )
+        )
+
+        assertTrue(IrRemoteProfileValidator.validate(profile).isEmpty())
+    }
+
+    @Test
+    fun rejectsMalformedRawWaveformButton() {
+        val profile = IrRemoteProfile(
+            profileId = "custom-ir",
+            category = DeviceCategory.TELEVISION,
+            brand = "User created",
+            model = null,
+            displayName = "Custom TV Remote",
+            buttons = listOf(
+                IrRemoteButton(
+                    id = "power",
+                    label = "Power",
+                    command = IrCommandSpec.Raw(
+                        dev.localremote.app.connectivity.infrared.IrSignal(
+                            38_000,
+                            listOf(900, 0, 560)
+                        )
+                    )
+                )
+            )
+        )
+
+        assertTrue(
+            IrRemoteProfileValidator.validate(profile)
+                .any { it.contains("invalid raw IR signal") }
+        )
+    }
+
+    @Test
     fun rejectsDuplicateButtonIds() {
         val button = IrRemoteButton(
             id = "power",
@@ -107,7 +160,9 @@ class IrRemoteProfileValidatorTest {
                 IrRemoteButton(
                     id = "power",
                     label = "Power",
-                    command = IrProtocolCommand.Nec(address = 1, command = 2),
+                    command = IrCommandSpec.Protocol(
+                        IrProtocolCommand.Nec(address = 1, command = 2)
+                    ),
                     evidence = evidence
                 )
             )
