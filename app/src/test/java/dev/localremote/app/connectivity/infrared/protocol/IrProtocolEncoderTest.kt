@@ -58,10 +58,11 @@ class IrProtocolEncoderTest {
         assertEquals(listOf(4_500, 4_500), signal.patternMicros.take(2))
         // Address 0xE0 is transmitted LSB-first: 0,0,0,0,0,1,1,1.
         assertEquals(
-            listOf(560, 560, 560, 560, 560, 560, 560, 1_690),
-            signal.patternMicros.subList(2, 18).filterIndexed { index, _ -> index % 2 == 0 }
-                .zip(signal.patternMicros.subList(2, 18).filterIndexed { index, _ -> index % 2 == 1 })
-                .flatMap { listOf(it.first, it.second) }.take(8)
+            listOf(
+                560, 560, 560, 560, 560, 560, 560, 560,
+                560, 560, 560, 1_690, 560, 1_690, 560, 1_690
+            ),
+            signal.patternMicros.subList(2, 18)
         )
         assertEquals(null, IrSignalValidator.validate(signal))
     }
