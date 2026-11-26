@@ -151,6 +151,13 @@ object IrRemoteProfileMapper {
             "addressValue" to command.address,
             "commandValue" to command.command
         )
+        is IrProtocolCommand.PhilipsRc5 -> mapOf(
+            "commandType" to "PROTOCOL",
+            "protocolName" to "PHILIPS_RC5",
+            "protocolVariant" to if (command.extended) "RC5X" else "RC5",
+            "addressValue" to command.address,
+            "commandValue" to command.command
+        )
         is IrProtocolCommand.SonySirc -> mapOf(
             "commandType" to "PROTOCOL",
             "protocolName" to "SONY_SIRC",
@@ -172,6 +179,14 @@ object IrRemoteProfileMapper {
             "NEC" -> IrProtocolCommand.Nec(address, command)
             "NEC_EXTENDED" -> IrProtocolCommand.NecExtended(address, command)
             "SAMSUNG32" -> IrProtocolCommand.Samsung32(address, command)
+            "PHILIPS_RC5" -> {
+                val extended = when (entity.protocolVariant) {
+                    "RC5" -> false
+                    "RC5X" -> true
+                    else -> error("Stored Philips RC5 button has an unknown variant.")
+                }
+                IrProtocolCommand.PhilipsRc5(address, command, extended)
+            }
             "SONY_SIRC" -> {
                 val variant = runCatching {
                     SonySircVariant.valueOf(

@@ -6,7 +6,9 @@ enum class IrProtocolId {
     SAMSUNG32,
     SONY_SIRC_12,
     SONY_SIRC_15,
-    SONY_SIRC_20
+    SONY_SIRC_20,
+    RC5,
+    RC5X
 }
 
 enum class SonySircVariant(
@@ -65,6 +67,16 @@ sealed interface IrProtocolCommand {
             SonySircVariant.SIRC_15 -> IrProtocolId.SONY_SIRC_15
             SonySircVariant.SIRC_20 -> IrProtocolId.SONY_SIRC_20
         }
+    }
+
+    /** Philips RC5/RC5X payload. Toggle state is held per saved remote. */
+    data class PhilipsRc5(
+        val address: Int,
+        val command: Int,
+        val extended: Boolean = false
+    ) : IrProtocolCommand {
+        override val protocolId =
+            if (extended) IrProtocolId.RC5X else IrProtocolId.RC5
     }
 }
 

@@ -77,9 +77,43 @@ class ProtocolCommandDispatcherTest {
         assertEquals(0, transmitter.transmitCount)
     }
 
+
+    @Test
+    fun rc5ToggleAlternatesPerSavedProfileAndAcrossDifferentButtons() = runBlocking {
+        val transmitter = FakeTransmitter()
+        val dispatcher = ProtocolCommandDispatcher(transmitter)
+        val power = IrCommandSpec.Protocol(IrProtocolCommand.PhilipsRc5(0, 0x0C))
+        val volume = IrCommandSpec.Protocol(IrProtocolCommand.PhilipsRc5(0, 0x10))
+        dispatcher.dispatch("living-room-tv", power)
+        dispatcher.dispatch("living-room-tv", volume)
+        dispatcher.dispatch("bedroom-tv", power)
+
+        assertEquals(3, transmitter.transmittedSignals.size)
+        assertEquals(IrProtocolEncoder.encode(IrProtocolCommand.PhilipsRc5(0, 0x0C), 0).patternMicros,
+            transmitter.transmittedSignals[0].patternMicros)
+        assertEquals(IrProtocolEncoder.encode(IrProtocolCommand.PhilipsRc5(0, 0x10), 1).patternMicros,
+            transmitter.transmittedSignals[1].patternMicros)
+        assertEquals(IrProtocolEncoder.encode(IrProtocolCommand.PhilipsRc5(0, 0x0C), 0).patternMicros,
+            transmitter.transmittedSignals[2].patternMicros)
+    }
+
+    @Test
+    fun rc5ToggleAdvancesAfterUncertainTransmitFailure() = runBlocking {
+        val transmitter = FakeTransmitter().apply { nextResult = IrTransmitResult.Failed("simulated") }
+        val dispatcher = ProtocolCommandDispatcher(transmitter)
+        val command = IrCommandSpec.Protocol(IrProtocolCommand.PhilipsRc5(0, 0x0C))
+        dispatcher.dispatch("living-room-tv", command)
+        transmitter.nextResult = IrTransmitResult.Sent(1)
+        dispatcher.dispatch("living-room-tv", command)
+        assertEquals(IrProtocolEncoder.encode(IrProtocolCommand.PhilipsRc5(0, 0x0C), 1).patternMicros,
+            transmitter.transmittedSignals[1].patternMicros)
+    }
+
     private class FakeTransmitter : IrTransmitter {
         var transmitCount = 0
         var lastSignal: IrSignal? = null
+        val transmittedSignals = mutableListOf<IrSignal>()
+        var nextResult: IrTransmitResult? = null
 
         override suspend fun inspect() = IrHardwareStatus(
             transmitterAvailable = true,
@@ -89,7 +123,8 @@ class ProtocolCommandDispatcherTest {
         override suspend fun transmit(signal: IrSignal): IrTransmitResult {
             transmitCount++
             lastSignal = signal
-            return IrTransmitResult.Sent(signal.totalDurationMicros)
+            transmittedSignals += signal
+            return nextResult ?: IrTransmitResult.Sent(signal.totalDurationMicros)
         }
     }
 }

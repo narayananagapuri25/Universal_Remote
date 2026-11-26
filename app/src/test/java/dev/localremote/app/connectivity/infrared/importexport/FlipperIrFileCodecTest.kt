@@ -139,6 +139,40 @@ class FlipperIrFileCodecTest {
         assertEquals(listOf(2100, 700, 700, 700, 700, 700, 700, 1400), signal.patternMicros)
     }
 
+
+    @Test
+    fun importsAndExportsParsedRc5AndRc5xCommands() {
+        val content = """
+            Filetype: IR signals file
+            Version: 1
+            #
+            name: Power
+            type: parsed
+            protocol: RC5
+            address: 05 00 00 00
+            command: 35 00 00 00
+            #
+            name: Guide
+            type: parsed
+            protocol: RC5X
+            address: 12 00 00 00
+            command: 65 00 00 00
+        """.trimIndent()
+        val imported = FlipperIrFileCodec.importFile(content, metadata)
+        assertTrue(imported is FlipperIrFileCodec.ImportResult.Success)
+        val profile = (imported as FlipperIrFileCodec.ImportResult.Success).profile
+        assertEquals(IrProtocolCommand.PhilipsRc5(0x05, 0x35),
+            (profile.buttons[0].command as IrCommandSpec.Protocol).command)
+        assertEquals(IrProtocolCommand.PhilipsRc5(0x12, 0x65, true),
+            (profile.buttons[1].command as IrCommandSpec.Protocol).command)
+
+        val exported = FlipperIrFileCodec.exportFile(profile)
+        assertTrue(exported is FlipperIrFileCodec.ExportResult.Success)
+        val output = (exported as FlipperIrFileCodec.ExportResult.Success).content
+        assertTrue(output.contains("protocol: RC5\n"))
+        assertTrue(output.contains("protocol: RC5X\n"))
+    }
+
     @Test
     fun rejectsUnknownParsedProtocolInsteadOfGuessing() {
         val content = """
@@ -147,7 +181,7 @@ class FlipperIrFileCodecTest {
             #
             name: Power
             type: parsed
-            protocol: RC5
+            protocol: Kaseikyo
             address: 01 00 00 00
             command: 01 00 00 00
         """.trimIndent()

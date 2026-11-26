@@ -13,8 +13,11 @@ object IrProtocolEncoder {
     private const val NEC_FREQUENCY_HZ = 38_000
     private const val SAMSUNG_FREQUENCY_HZ = 38_000
     private const val SONY_FREQUENCY_HZ = 40_000
+    private const val RC5_FREQUENCY_HZ = 36_000
+    private const val RC5_HALF_BIT_US = 889
+    private const val RC5_TRAILING_GAP_US = 25_000
 
-    fun encode(command: IrProtocolCommand): IrSignal = when (command) {
+    fun encode(command: IrProtocolCommand, rc5ToggleBit: Int = 0): IrSignal = when (command) {
         is IrProtocolCommand.Nec -> encodeNec(
             address = command.address,
             command = command.command,
@@ -27,6 +30,7 @@ object IrProtocolEncoder {
         )
         is IrProtocolCommand.Samsung32 -> encodeSamsung32(command)
         is IrProtocolCommand.SonySirc -> encodeSonySirc(command)
+        is IrProtocolCommand.PhilipsRc5 -> encodePhilipsRc5(command, rc5ToggleBit)
     }
 
     private fun encodeNec(
@@ -122,6 +126,69 @@ object IrProtocolEncoder {
         }
 
         return IrSignal(SONY_FREQUENCY_HZ, pattern)
+    }
+
+
+    /**
+     * Philips RC5/RC5X: 14-bit MSB-first Manchester frame, 36 kHz carrier,
+     * 889 us half-bit cells. RC5X uses S2 as the inverse of command bit 6.
+     * The leading idle half-cell is omitted so the Android waveform begins
+     * with a mark. The profile-aware dispatcher supplies the toggle bit.
+     */
+    private fun encodePhilipsRc5(
+        command: IrProtocolCommand.PhilipsRc5,
+        toggleBit: Int
+    ): IrSignal {
+        require(toggleBit in 0..1) { "RC5 toggle bit must be 0 or 1." }
+        requireRange(command.address, 0, 0x1F, "RC5 address")
+        requireRange(command.command, 0, if (command.extended) 0x7F else 0x3F,
+            if (command.extended) "RC5X command" else "RC5 command")
+
+        val secondStartBit = if (command.extended && (command.command and 0x40) != 0) 0 else 1
+        val bits = buildList {
+            add(1)
+            add(secondStartBit)
+            add(toggleBit)
+            for (bit in 4 downTo 0) add((command.address ushr bit) and 1)
+            for (bit in 5 downTo 0) add((command.command ushr bit) and 1)
+        }
+        require(bits.size == 14)
+
+        // RC5 logical 0 = mark/space; logical 1 = space/mark.
+        val halfCells = buildList {
+            bits.forEach { bit ->
+                if (bit == 0) {
+                    add(true)
+                    add(false)
+                } else {
+                    add(false)
+                    add(true)
+                }
+            }
+        }
+        require(halfCells.first() == false && halfCells[1]) {
+            "RC5 start symbol does not have the expected Manchester shape."
+        }
+
+        // Start with the second half of the first start-bit symbol (a mark).
+        val cells = halfCells.drop(1)
+        val pattern = mutableListOf<Int>()
+        var levelIsMark = true
+        var duration = 0
+        cells.forEach { isMark ->
+            if (isMark == levelIsMark) {
+                duration += RC5_HALF_BIT_US
+            } else {
+                pattern += duration
+                levelIsMark = isMark
+                duration = RC5_HALF_BIT_US
+            }
+        }
+        if (duration > 0) pattern += duration
+        if (levelIsMark) pattern += RC5_TRAILING_GAP_US
+        else pattern[pattern.lastIndex] += RC5_TRAILING_GAP_US
+
+        return IrSignal(RC5_FREQUENCY_HZ, pattern)
     }
 
     private fun appendByteLsbFirst(

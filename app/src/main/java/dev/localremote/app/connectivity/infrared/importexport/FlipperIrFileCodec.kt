@@ -320,6 +320,18 @@ object FlipperIrFileCodec {
                     }
                     IrProtocolCommand.Samsung32(address.toInt(), command.toInt())
                 }
+                "RC5" -> {
+                    require(address <= 0x1F && command <= 0x3F) {
+                        "RC5 address must be 5-bit and command must be 6-bit."
+                    }
+                    IrProtocolCommand.PhilipsRc5(address.toInt(), command.toInt())
+                }
+                "RC5X" -> {
+                    require(address <= 0x1F && command <= 0x7F) {
+                        "RC5X address must be 5-bit and command must be 7-bit."
+                    }
+                    IrProtocolCommand.PhilipsRc5(address.toInt(), command.toInt(), extended = true)
+                }
                 "SIRC" -> {
                     require(address <= 0x1F && command <= 0x7F) {
                         "SIRC address must be 5-bit and command must be 7-bit."
@@ -455,6 +467,8 @@ object FlipperIrFileCodec {
                 ParsedFields("NECext", command.address, command.command)
             is IrProtocolCommand.Samsung32 ->
                 ParsedFields("Samsung32", command.address, command.command)
+            is IrProtocolCommand.PhilipsRc5 ->
+                ParsedFields(if (command.extended) "RC5X" else "RC5", command.address, command.command)
             is IrProtocolCommand.SonySirc -> {
                 val address = when (command.variant) {
                     SonySircVariant.SIRC_12, SonySircVariant.SIRC_15 -> command.address

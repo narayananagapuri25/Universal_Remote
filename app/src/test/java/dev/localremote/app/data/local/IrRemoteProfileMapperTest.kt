@@ -25,6 +25,8 @@ class IrRemoteProfileMapperTest {
                 protocolButton("nec", IrProtocolCommand.Nec(0x18, 0x08)),
                 protocolButton("nec-ext", IrProtocolCommand.NecExtended(0x87EE, 0xA05D)),
                 protocolButton("samsung", IrProtocolCommand.Samsung32(0x07, 0x0F)),
+                protocolButton("rc5", IrProtocolCommand.PhilipsRc5(0x05, 0x35)),
+                protocolButton("rc5x", IrProtocolCommand.PhilipsRc5(0x12, 0x65, true)),
                 protocolButton(
                     "sirc12",
                     IrProtocolCommand.SonySirc(SonySircVariant.SIRC_12, 1, 0x15)

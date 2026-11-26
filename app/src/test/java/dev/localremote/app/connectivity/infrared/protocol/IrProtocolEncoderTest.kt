@@ -165,12 +165,63 @@ class IrProtocolEncoderTest {
         assertTrue(error is IllegalArgumentException)
     }
 
+
+    @Test
+    fun rc5AndRc5xEncodeManchesterBitsAndToggleBit() {
+        val standard = IrProtocolEncoder.encode(IrProtocolCommand.PhilipsRc5(0x05, 0x35), 0)
+        val standardToggle = IrProtocolEncoder.encode(IrProtocolCommand.PhilipsRc5(0x05, 0x35), 1)
+        val extended = IrProtocolEncoder.encode(IrProtocolCommand.PhilipsRc5(0x12, 0x65, true), 1)
+        assertEquals(36_000, standard.carrierFrequencyHz)
+        assertEquals(49_003L, standard.totalDurationMicros)
+        assertEquals(listOf(1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1), decodeRc5Bits(standard))
+        assertEquals(1, decodeRc5Bits(standardToggle)[2])
+        assertEquals(listOf(1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1), decodeRc5Bits(extended))
+        assertEquals(null, IrSignalValidator.validate(standard))
+        assertEquals(null, IrSignalValidator.validate(extended))
+    }
+
+    @Test
+    fun rc5RejectsInvalidToggleAddressAndCommandWidths() {
+        val failures = listOf(
+            runCatching { IrProtocolEncoder.encode(IrProtocolCommand.PhilipsRc5(1, 1), 2) }.exceptionOrNull(),
+            runCatching { IrProtocolEncoder.encode(IrProtocolCommand.PhilipsRc5(0x20, 1)) }.exceptionOrNull(),
+            runCatching { IrProtocolEncoder.encode(IrProtocolCommand.PhilipsRc5(1, 0x40)) }.exceptionOrNull(),
+            runCatching { IrProtocolEncoder.encode(IrProtocolCommand.PhilipsRc5(1, 0x80, true)) }.exceptionOrNull()
+        )
+        assertTrue(failures.all { it is IllegalArgumentException })
+    }
+
+    private fun decodeRc5Bits(signal: dev.localremote.app.connectivity.infrared.IrSignal): List<Int> {
+        val durations = signal.patternMicros.toMutableList()
+        val last = durations.lastIndex
+        durations[last] -= 25_000
+        if (durations[last] == 0) durations.removeAt(last)
+        val cells = mutableListOf<Boolean>()
+        var mark = true
+        durations.forEach { duration ->
+            assertEquals("RC5 half-cell units", 0, duration % 889)
+            repeat(duration / 889) { cells += mark }
+            mark = !mark
+        }
+        val fullCells = listOf(false) + cells
+        assertEquals(28, fullCells.size)
+        return (0 until 14).map { index ->
+            when (fullCells.subList(index * 2, index * 2 + 2)) {
+                listOf(true, false) -> 0
+                listOf(false, true) -> 1
+                else -> error("Invalid RC5 Manchester bit.")
+            }
+        }
+    }
+
     @Test
     fun allEncodedSignalsStayWithinAndroidPatternLimit() {
         val signals = listOf(
             IrProtocolEncoder.encode(IrProtocolCommand.Nec(0x00, 0x45)),
             IrProtocolEncoder.encode(IrProtocolCommand.NecExtended(0x1234, 0x45)),
             IrProtocolEncoder.encode(IrProtocolCommand.Samsung32(0xE0, 0x40)),
+            IrProtocolEncoder.encode(IrProtocolCommand.PhilipsRc5(0x05, 0x35)),
+            IrProtocolEncoder.encode(IrProtocolCommand.PhilipsRc5(0x12, 0x65, true)),
             IrProtocolEncoder.encode(
                 IrProtocolCommand.SonySirc(SonySircVariant.SIRC_12, 1, 19)
             ),

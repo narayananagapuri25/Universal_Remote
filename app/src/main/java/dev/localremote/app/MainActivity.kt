@@ -125,7 +125,13 @@ class MainActivity : ComponentActivity() {
                     irHardware = irHardware,
                     profileRepository = app.irProfileRepository,
                     dispatcher = remember(irTransmitter) {
-                        ProtocolCommandDispatcher(irTransmitter)
+                        ProtocolCommandDispatcher(
+                            irTransmitter,
+                            applicationContext.getSharedPreferences(
+                                "ir_protocol_dispatch_state",
+                                Context.MODE_PRIVATE
+                            )
+                        )
                     },
                     daikinDispatcher = remember(irTransmitter) {
                         DaikinAcCommandDispatcher(irTransmitter)
@@ -730,7 +736,7 @@ private fun RemoteScreen(
         scope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) {
-                    dispatcher.dispatch(button.command)
+                    dispatcher.dispatch(profile.profileId, button.command)
                 }
             }
             sendFeedback = result.fold(
