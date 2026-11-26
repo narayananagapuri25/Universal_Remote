@@ -99,7 +99,7 @@ At minimum, CI/emulator or test devices must cover the minimum API and the major
 | API 33 | Notification runtime permission, target SDK changes, exact alarm default denial cases |
 | API 34–35 | Background and alarm restrictions, biometric and permissions |
 | API 36 (Android 16) | Current Google Play target floor as of 2026-11-26; test current permission/foreground/notification behaviour |
-| API 37 (Android 17) | ACCESS_LOCAL_NETWORK, denied/revoked flows for mDNS/SSDP/raw TCP/UDP and LAN controls |
+| API 37.2 (Android 17) | Compile-SDK compatibility; `ACCESS_LOCAL_NETWORK` behaviour when targeting API 37+, denied/revoked flows for mDNS/SSDP/raw TCP/UDP and LAN controls |
 
 Also test at least two OEM Android builds with aggressive battery/background restrictions once the reference phone and test hardware are known.
 
@@ -197,5 +197,5 @@ Release gates:
 - User's primary Android phone model and IR emitter capability are not yet recorded.
 - Exact available TV, AC, set-top box, Bluetooth and external IR accessory models are not yet recorded.
 - The first physical compatibility lab matrix must be created when hardware is identified.
-- API 37 test device/emulator availability must be confirmed during implementation.
+- API 37.2 compile platform is required by the pinned stable Compose dependency set. API 37/37.2 runtime test devices or emulator images must be confirmed during implementation; targetSdk36 and targetSdk37 behaviour must be tested separately.
 - No model can receive the “Physically tested” label until evidence exists.
