@@ -24,7 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -41,6 +40,7 @@ import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcRemotePolic
 import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcState
 import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcTransportVariant
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.roundToInt
 
 @Composable
@@ -426,7 +426,7 @@ private fun temperatureRangeFor(mode: DaikinAcMode): ClosedFloatingPointRange<Fl
     }
 
 private fun Float.formatHalfDegree(): String =
-    if (this % 1f == 0f) toInt().toString() else "%.1f".format(this)
+    if (this % 1f == 0f) toInt().toString() else String.format(Locale.ROOT, "%.1f", this)
 
 private fun daikinResultMessage(result: IrTransmitResult): String = when (result) {
     is IrTransmitResult.Sent ->
