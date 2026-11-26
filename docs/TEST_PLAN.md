@@ -27,12 +27,21 @@ No blocker/high-severity safety, security, privacy, data-loss or command-routing
 
 ### 2.2 Pure Kotlin unit tests
 
+The first implementation branch now has deterministic unit coverage for built-in IR capability checks, waveform validation, protocol encoders (NEC, NECext, Samsung32, Sony SIRC) and profile metadata validation. These tests prove encoding/validation logic only; they do not prove a specific appliance will respond.
+
 - Device identity normalization, confidence scoring and duplicate prevention.
 - Capability selection and connection-route recommendation.
 - Command idempotency and PowerOn/PowerOff/PowerToggle classification.
 - AC state transitions, full-state packet generation, checksum and boundary values.
 - TV/STB key mapping, channel list parsing and source selection.
 - IR code parsing, carrier/timing bounds, repeat frames and truncation rejection.
+- Golden-vector tests for NEC, extended NEC, Samsung32 and Sony SIRC12/15/20 timing, payload bit order, field boundaries and invalid values.
+- Daikin AC saved-profile mapping round trips for both transport variants, all exposed state flags, invalid enum values, invalid temperatures, and bounded display names.
+- Semantic TV/STB layout validation and persistence mapping: supported category roles, sparse user assignments, duplicate role rejection, unknown command-button rejection and unknown stored-role rejection.
+- Device-profile validation for unique button IDs, evidence references, physical test-record requirements and raw waveform validity.
+- Flipper `.ir` importer/exporter: header/version validation, bounded file/button/line sizes, duplicate and unknown field rejection, four-byte little-endian values, protocol field bounds, raw timing count <= 1,024, duty-cycle metadata, unsupported parsed protocols, and import/export round-trip fixtures.
+- Protocol/raw dispatch tests proving one encode/one transmit and no retry; invalid raw patterns must be rejected before hardware access.
+- Built-in IR capability detection, reported carrier-range enforcement, malformed waveform rejection, strict under-two-second duration, serialised transmitter access and no false appliance-state confirmation.
 - IR learning capture parsing, noise/incomplete-signal rejection, raw waveform bounds, replay mapping and receiver-not-present flow.
 - Command queue sequencing, parallelism across devices, cancellation and duplicate suppression.
 - Scene failure continuation, stop-on-failure override and recovery scene presentation.
@@ -45,7 +54,7 @@ Use protocol golden vectors with source/provenance. Where practical, include bot
 ### 2.3 Data and integration tests
 
 - Room DAO/repository persistence and observed Flow updates.
-- All database migrations from previous shipped schema versions.
+- All database migrations from previous shipped schema versions, including Room 2-to-3 Daikin profile persistence and 3-to-4 semantic TV/STB mapping table creation, preserving previous IR/device records.
 - App process death/restart and local DB corruption handling.
 - Profile/custom overlay preservation after catalogue update.
 - Backup/restore across app versions and simulated new-device restore.
@@ -83,6 +92,8 @@ A model is marked Physically tested only after the actual hardware test is recor
 
 **LAN devices:** verify mDNS, SSDP, documented API, authentication, TLS/certificate failure, network changes, DHCP address change, multiple devices, router isolation/client isolation and permission denial/revocation. Ensure no traffic leaves the local subnet for a control command.
 
+**Android TV Remote v2 / first physical target (Realme TechLife):** verify `_androidtvremote2._tcp.` discovery and manual IP fallback; pairing request/options/configuration acknowledgements; valid and invalid six-character pairing codes (including retry without losing the active challenge after a local check-byte mismatch); RSA pairing-secret known-answer vector; Android Keystore client certificate persistence; TV-certificate pinning and changed-certificate rejection; remote feature negotiation; no key sends before the remote service activates; key injection and ping replies; IME capability negotiation, focused-field counters and nested text batch-edit messages; APP_LINK feature bit 512 negotiation and disabled shortcuts when absent; YouTube/Netflix/Prime Video field-90 app-link payload encoding; disconnect clearing capability state; stale IME state cleared on reconnect; disconnect status; reconnection after Wi-Fi changes; explicit forget/unpair; and service-unavailable guidance. Physical acceptance requires the owner's exact Realme TV model/revision: pair on-screen, then verify Home, Back, D-pad/OK, volume, mute, input, power, text entry in a TV search field and each supported app shortcut. The app-launch request is only a request; confirm the intended app opens on real hardware. CI/protocol tests do not count as physical compatibility.
+
 **AC:** test each supported mode, setpoint min/max/step, full-state frames, fan/swing/timer bits, model variants and command sequencing against real AC hardware. Avoid claiming confirmation if no authoritative feedback exists.
 
 **TV/STB:** test power discrete/toggle semantics, volume routing, source, number keys, channel, menu navigation, media, app launch, keyboard/touchpad and standby wake independently per model.
@@ -99,7 +110,7 @@ At minimum, CI/emulator or test devices must cover the minimum API and the major
 | API 33 | Notification runtime permission, target SDK changes, exact alarm default denial cases |
 | API 34–35 | Background and alarm restrictions, biometric and permissions |
 | API 36 (Android 16) | Current Google Play target floor as of 2026-11-26; test current permission/foreground/notification behaviour |
-| API 37 (Android 17) | ACCESS_LOCAL_NETWORK, denied/revoked flows for mDNS/SSDP/raw TCP/UDP and LAN controls |
+| API 37.2 (Android 17) | Compile-SDK compatibility; `ACCESS_LOCAL_NETWORK` behaviour when targeting API 37+, denied/revoked flows for mDNS/SSDP/raw TCP/UDP and LAN controls |
 
 Also test at least two OEM Android builds with aggressive battery/background restrictions once the reference phone and test hardware are known.
 
@@ -195,7 +206,7 @@ Release gates:
 ## 10. Current test blockers / TBD
 
 - User's primary Android phone model and IR emitter capability are not yet recorded.
-- Exact available TV, AC, set-top box, Bluetooth and external IR accessory models are not yet recorded.
+- The exact Realme TechLife TV model/revision and its Android TV Remote Service availability are still pending physical confirmation. AC, set-top box, Bluetooth and external IR accessory models also remain to be recorded.
 - The first physical compatibility lab matrix must be created when hardware is identified.
-- API 37 test device/emulator availability must be confirmed during implementation.
+- API 37.2 compile platform is required by the pinned stable Compose dependency set. API 37/37.2 runtime test devices or emulator images must be confirmed during implementation; targetSdk36 and targetSdk37 behaviour must be tested separately.
 - No model can receive the “Physically tested” label until evidence exists.

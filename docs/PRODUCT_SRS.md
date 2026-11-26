@@ -94,13 +94,15 @@ The identifiers below are stable acceptance identifiers for implementation and t
 ### 5.3 Discovery and pairing
 
 - **FR-020:** Discover compatible local-network devices using supported mDNS/DNS-SD, SSDP/UPnP and documented manufacturer discovery mechanisms.
-- **FR-021:** Support supported Android TV/Google TV and other platform/manufacturer protocols through separate adapters. Do not infer control support from discovery alone.
+- **FR-021:** Support supported Android TV/Google TV and other platform/manufacturer protocols through separate adapters. Do not infer control support from discovery alone. The initial Android TV Remote v2 adapter uses on-device code pairing and a certificate-pinned local TLS session; its first UI target is Realme TechLife TV, conditional on compatible Android TV Remote Service availability.
 - **FR-022:** Discovery screen groups candidates by category and displays available name, manufacturer/model, transport, signal/reachability when exposed, saved/new state and a Connect/Test action.
 - **FR-023:** Unknown/non-discoverable IR devices can be added by guided category → brand → model → candidate code set → test commands → save workflow.
 - **FR-024:** Provide advanced manual configuration, including manual IP/port/protocol setup only for documented or safely configurable endpoints. Never perform indiscriminate port scanning or send arbitrary commands to unknown devices.
 - **FR-025:** Bluetooth discovery must support applicable BLE and Bluetooth Classic capabilities. Pairing must be user-approved and use Android-supported pairing flows where possible. Pairing success alone is not proof of remote-control capability.
 - **FR-026:** Use authenticated pairing where the target protocol supports it. Warn when a legacy protocol has no authentication/encryption. Never bypass manufacturer authentication or silently trust unknown devices.
 - **FR-027:** A connection/discovery adapter reports the actual capabilities and security class of the endpoint. Unsupported methods are shown as unavailable, not simulated.
+
+**Implementation status (2026-11-26):** OneRemote now has an initial manufacturer-neutral Android TV Remote v2 integration path, with Realme TechLife as the first physical validation target: mDNS discovery of the documented service, manual local-IP fallback, on-TV six-character pairing, Android Keystore client identity, TV-certificate pinning on the remote channel, remote feature negotiation and key injection. This implementation remains pending CI and physical testing against the owner's exact Realme TV model. It must not be labelled Physically tested until successful on-device pairing and core key checks have been observed.
 
 ### 5.4 Connectivity and hardware capability
 
@@ -146,6 +148,8 @@ The identifiers below are stable acceptance identifiers for implementation and t
 - **FR-075:** Voice entry is tap-to-use from dashboard and remote screens, optionally through compatible headset activation. No always-listening service. Manual controls remain available.
 - **FR-076:** Voice supports English, Hindi and Telugu at launch. Prefer offline speech recognition when installed/available. Online speech fallback is optional, opt-in and free-only; explain when audio leaves the device. Clarify ambiguous commands.
 - **FR-077:** Voice commands map to explicit typed actions and may not bypass safety, confirmation, pairing or permission rules.
+
+**Implementation status (2026-11-26):** The first TV/STB layout subset is implemented for imported IR profiles. Users explicitly map an existing imported button to a semantic role (Power, navigation, OK, volume, channel, number pad and category-specific controls); mappings are persisted locally. The app does not infer a role from a command label. Unassigned roles are disabled and imported command evidence remains unchanged. Drag/resize layout editing, haptics, voice and hold-repeat remain future work.
 
 ### 5.9 Command execution and state model
 

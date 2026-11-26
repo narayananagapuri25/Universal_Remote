@@ -3,7 +3,7 @@
 **Working product name:** OneRemote (provisional; branding clearance required)  
 **Baseline:** v1.0  
 **Date:** 2026-11-26  
-**Status:** Requirements consolidated; specification review pending  
+**Status:** Requirements and engineering baseline accepted; native Android implementation in progress  
 **Repository:** `narayananagapuri25/Universal_Remote`
 
 This package converts the gathered product requirements into an implementation-ready starting point. It contains:
@@ -26,14 +26,46 @@ OneRemote is a local-first, native Kotlin Android remote-control application. Th
 
 The core remote functionality must operate offline. New devices require user approval; trusted devices are rediscovered/reconnected on launch and foreground resume. Saved profiles remain until the user removes them. There is no account, household setup, mandatory cloud backend or continuous background scanning.
 
+## Android application foundation
+
+The `app/` module is the first native Android implementation foundation:
+- Kotlin with Android Gradle Plugin 9.5.3 and Gradle 9.9.1 (pinned)
+- Minimum Android API 26; compile SDK API 37.2; target SDK API 36
+- Compose Material 3 UI shell with Devices, Discover and Settings
+- Room-backed local saved-device persistence
+- Room-backed Daikin AC profile save/load/update/delete with schema migration and state validation
+- User-configurable TV and set-top-box semantic control layouts mapped explicitly to imported IR commands, stored locally with a Room migration
+- Android TV Remote v2 local Wi-Fi adapter with mDNS service discovery, six-character TV pairing flow, Android Keystore client identity, pinned TV certificate, and direct key-control session
+- First-release category and command-safety domain types
+- Independently authored NEC, extended NEC, Samsung32, Philips RC5/RC5X and Sony SIRC12/15/20 protocol encoders with golden-vector tests
+- Model-specific IR profile/button model with per-command compatibility evidence, raw waveform or typed protocol commands, and validator
+- One-shot dispatcher for protocol or validated raw waveform commands connected to the guarded transmitter
+- Bounded Flipper-compatible `.ir` import/export for supported parsed protocols and raw waveform buttons, with imported profiles kept unverified
+- Built-in IR capability inspection, carrier-range validation and guarded transmit adapter with unit tests
+- Smart TV/set-top-box volume-routing policy with unit tests
+- GitHub Actions verification: unit tests, Android Lint and debug APK assembly
+
+The app now has a model-specific IR profile data model, protocol encoders and a Flipper-compatible `.ir` import/export codec. An experimental Daikin AC state editor is exposed from Discover for the documented ARC466A9-style three-frame and ARC480A11-style one-frame protocol families. It requires the user to select and attest to the matching family, checks the phone's reported 38 kHz capability, and sends one complete state frame without retries. This is not a universal Daikin profile and has not been physically tested by OneRemote. Complete AC states can now be saved, loaded, updated and deleted locally; loading requires the original remote family to be confirmed again before sending. Imported TV and set-top-box profiles now support a user-configurable semantic control layout: the owner explicitly maps known imported commands to Power, navigation, volume, channel, number-pad and supported guide/playback roles. Unassigned roles remain disabled; mappings do not change the command's Unverified evidence status. These are configurable controls, not a model-specific bundled code catalogue. There is still no bundled brand/model IR code catalogue. The first direct LAN control adapter now targets Android TV Remote v2 (mDNS service discovery, TLS pairing on port 6467, certificate-pinned remote session on port 6466, Android key injection, ping replies and optional text-input support). When the TV reports a focused text field, the app can send typed text from the phone using the negotiated remote IME protocol; this does not claim a general TV keyboard or voice capability. A manufacturer-neutral Android TV Remote v2 screen exposes discovery, manual IP fallback, pairing, navigation, power/input, volume/channel, number-pad and media controls; Realme TechLife is the first physical test target, not the feature identity. Actual compatibility is conditional on the TV exposing Android TV Remote Service; a successful build or protocol fixture does not count as physical validation. The user must complete the on-TV pairing prompt before commands are enabled. General LAN/Bluetooth discovery, other vendor TV protocols and physical IR receiver learning remain unimplemented. The Discover screen also reports built-in IR capability without transmitting during setup. The first build uses a provisional application ID (`dev.localremote.app`) pending product-name clearance; it must not be published under this ID before identity review.
+
+See [IR protocol implementation and data policy](docs/PROTOCOL_IMPLEMENTATION.md) for supported encoder families, code-data licensing rules and compatibility evidence requirements.
+
+## Local build
+
+Install JDK 21, Android SDK Platform API 37.2, Android SDK Platform API 36, Build Tools 36.0.0 and Gradle 9.9.1. Then run:
+
+```bash
+gradle clean testDebugUnitTest lintDebug assembleDebug
+```
+
+The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. This branch currently uses the Gradle installation directly (no Gradle Wrapper JAR has been committed yet); CI installs the pinned Gradle distribution explicitly.
+
 ## Approval and implementation policy
 
-1. Review the SRS, architecture, test plan and risk register.
-2. Resolve the branding, legal/licensing, monetisation and hardware test gates listed in the risk register.
-3. Review the engineering-baseline pull request and explicitly approve it before merge.
-4. Implement only on feature branches.
-5. Require mandatory CI checks and explicit owner approval before every merge to `main`.
-6. Do not publish an APK until all release gates in `docs/TEST_PLAN.md` pass.
+1. Use the merged SRS, architecture, test plan and risk register as the implementation baseline.
+2. Resolve branding, legal/licensing, monetisation and hardware-test gates before their dependent release.
+3. Implement only on feature branches and submit pull requests.
+4. Require mandatory CI checks and the owner's explicit approval before every merge to `main`.
+5. Do not publish a production APK until all release gates in `docs/TEST_PLAN.md` pass.
 
 ## Source references
 

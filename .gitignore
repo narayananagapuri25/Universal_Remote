@@ -1,0 +1,21 @@
+# Gradle
+.gradle/
+build/
+**/build/
+.kotlin/
+
+# Android Studio
+.idea/
+*.iml
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Signing material - never commit private keys
+*.jks
+*.keystore
+keystore.properties
+
+# Local test output
+*.hprof

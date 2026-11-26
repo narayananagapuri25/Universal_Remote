@@ -1,0 +1,247 @@
+package dev.localremote.app.connectivity.infrared.protocol
+
+import dev.localremote.app.connectivity.infrared.IrSignal
+
+/**
+ * Encodes documented protocol fields into Android's alternating mark/space
+ * microsecond representation. No manufacturer code tables are embedded here.
+ *
+ * NECext uses Flipper's independent 16-bit address and 16-bit command payload;\n * it does not use the legacy NEC inverse-byte arrangement.\n *\n * Timings should be validated against the supplied original-remote capture
+ * before a model profile is labelled protocol verified or physically tested.
+ */
+object IrProtocolEncoder {
+    private const val NEC_FREQUENCY_HZ = 38_000
+    private const val SAMSUNG_FREQUENCY_HZ = 38_000
+    private const val SONY_FREQUENCY_HZ = 40_000
+    private const val RC5_FREQUENCY_HZ = 36_000
+    private const val RC5_HALF_BIT_US = 889
+    private const val RC5_TRAILING_GAP_US = 25_000
+
+    fun encode(command: IrProtocolCommand, rc5ToggleBit: Int = 0): IrSignal = when (command) {
+        is IrProtocolCommand.Nec -> encodeNec(
+            address = command.address,
+            command = command.command,
+            extendedAddress = false
+        )
+        is IrProtocolCommand.NecExtended -> encodeNec(
+            address = command.address,
+            command = command.command,
+            extendedAddress = true
+        )
+        is IrProtocolCommand.Samsung32 -> encodeSamsung32(command)
+        is IrProtocolCommand.SonySirc -> encodeSonySirc(command)
+        is IrProtocolCommand.PhilipsRc5 -> encodePhilipsRc5(command, rc5ToggleBit)
+    }
+
+    private fun encodeNec(
+        address: Int,
+        command: Int,
+        extendedAddress: Boolean
+    ): IrSignal {
+        val bytes = if (extendedAddress) {
+            requireRange(address, 0x0000, 0xFFFF, "NEC extended address")
+            requireRange(command, 0x0000, 0xFFFF, "NEC extended command")
+            listOf(
+                address and 0xFF,
+                (address ushr 8) and 0xFF,
+                command and 0xFF,
+                (command ushr 8) and 0xFF
+            )
+        } else {
+            requireByte(address, "NEC address")
+            requireByte(command, "NEC command")
+            listOf(
+                address,
+                address xor 0xFF,
+                command,
+                command xor 0xFF
+            )
+        }
+
+        val pattern = mutableListOf(9_000, 4_500)
+        bytes.forEach { appendByteLsbFirst(pattern, it, ::appendNecBit) }
+        pattern += NEC_UNIT
+
+        return IrSignal(NEC_FREQUENCY_HZ, pattern)
+    }
+
+    private fun encodeSamsung32(command: IrProtocolCommand.Samsung32): IrSignal {
+        requireByte(command.address, "Samsung32 address")
+        requireByte(command.command, "Samsung32 command")
+
+        // Samsung32 transmits address, repeated address, command, inverted command.
+        val bytes = listOf(
+            command.address,
+            command.address,
+            command.command,
+            command.command xor 0xFF
+        )
+        val pattern = mutableListOf(4_500, 4_500)
+        bytes.forEach { appendByteLsbFirst(pattern, it, ::appendSamsungBit) }
+        pattern += SAMSUNG_UNIT
+
+        return IrSignal(SAMSUNG_FREQUENCY_HZ, pattern)
+    }
+
+    private fun encodeSonySirc(command: IrProtocolCommand.SonySirc): IrSignal {
+        requireRange(command.command, 0, 0x7F, "Sony SIRC command")
+        requireRange(
+            command.address,
+            0,
+            (1 shl command.variant.addressBitCount) - 1,
+            "Sony SIRC address"
+        )
+
+        val extendedData = command.extendedData
+        when (command.variant) {
+            SonySircVariant.SIRC_12,
+            SonySircVariant.SIRC_15 -> require(extendedData == null) {
+                "Sony SIRC12/15 do not have an extended data field."
+            }
+            SonySircVariant.SIRC_20 -> requireRange(
+                requireNotNull(extendedData) {
+                    "Sony SIRC20 requires an 8-bit extended data field."
+                },
+                0,
+                0xFF,
+                "Sony SIRC20 extended data"
+            )
+        }
+
+        val pattern = mutableListOf(2_400, 600)
+        appendBitsLsbFirst(pattern, command.command, 7, ::appendSonyBit)
+        appendBitsLsbFirst(
+            pattern,
+            command.address,
+            command.variant.addressBitCount,
+            ::appendSonyBit
+        )
+        if (command.variant == SonySircVariant.SIRC_20) {
+            appendBitsLsbFirst(
+                pattern,
+                requireNotNull(extendedData),
+                8,
+                ::appendSonyBit
+            )
+        }
+
+        return IrSignal(SONY_FREQUENCY_HZ, pattern)
+    }
+
+
+    /**
+     * Philips RC5/RC5X: 14-bit MSB-first Manchester frame, 36 kHz carrier,
+     * 889 us half-bit cells. RC5X uses S2 as the inverse of command bit 6.
+     * The leading idle half-cell is omitted so the Android waveform begins
+     * with a mark. The profile-aware dispatcher supplies the toggle bit.
+     */
+    private fun encodePhilipsRc5(
+        command: IrProtocolCommand.PhilipsRc5,
+        toggleBit: Int
+    ): IrSignal {
+        require(toggleBit in 0..1) { "RC5 toggle bit must be 0 or 1." }
+        requireRange(command.address, 0, 0x1F, "RC5 address")
+        requireRange(command.command, 0, if (command.extended) 0x7F else 0x3F,
+            if (command.extended) "RC5X command" else "RC5 command")
+
+        val secondStartBit = if (command.extended && (command.command and 0x40) != 0) 0 else 1
+        val bits = buildList {
+            add(1)
+            add(secondStartBit)
+            add(toggleBit)
+            for (bit in 4 downTo 0) add((command.address ushr bit) and 1)
+            for (bit in 5 downTo 0) add((command.command ushr bit) and 1)
+        }
+        require(bits.size == 14)
+
+        // RC5 logical 0 = mark/space; logical 1 = space/mark.
+        val halfCells = buildList {
+            bits.forEach { bit ->
+                if (bit == 0) {
+                    add(true)
+                    add(false)
+                } else {
+                    add(false)
+                    add(true)
+                }
+            }
+        }
+        require(halfCells.first() == false && halfCells[1]) {
+            "RC5 start symbol does not have the expected Manchester shape."
+        }
+
+        // Start with the second half of the first start-bit symbol (a mark).
+        val cells = halfCells.drop(1)
+        val pattern = mutableListOf<Int>()
+        var levelIsMark = true
+        var duration = 0
+        cells.forEach { isMark ->
+            if (isMark == levelIsMark) {
+                duration += RC5_HALF_BIT_US
+            } else {
+                pattern += duration
+                levelIsMark = isMark
+                duration = RC5_HALF_BIT_US
+            }
+        }
+        if (duration > 0) pattern += duration
+        if (levelIsMark) pattern += RC5_TRAILING_GAP_US
+        else pattern[pattern.lastIndex] += RC5_TRAILING_GAP_US
+
+        return IrSignal(RC5_FREQUENCY_HZ, pattern)
+    }
+
+    private fun appendByteLsbFirst(
+        pattern: MutableList<Int>,
+        value: Int,
+        appendBit: (MutableList<Int>, Boolean) -> Unit
+    ) {
+        appendBitsLsbFirst(pattern, value, 8, appendBit)
+    }
+
+    private fun appendBitsLsbFirst(
+        pattern: MutableList<Int>,
+        value: Int,
+        bitCount: Int,
+        appendBit: (MutableList<Int>, Boolean) -> Unit
+    ) {
+        require(bitCount in 1..31)
+        for (bit in 0 until bitCount) {
+            appendBit(pattern, ((value ushr bit) and 1) != 0)
+        }
+    }
+
+    private fun appendNecBit(pattern: MutableList<Int>, one: Boolean) {
+        pattern += NEC_UNIT
+        pattern += if (one) NEC_ONE_SPACE else NEC_ZERO_SPACE
+    }
+
+    private fun appendSamsungBit(pattern: MutableList<Int>, one: Boolean) {
+        pattern += SAMSUNG_UNIT
+        pattern += if (one) SAMSUNG_ONE_SPACE else SAMSUNG_ZERO_SPACE
+    }
+
+    private fun appendSonyBit(pattern: MutableList<Int>, one: Boolean) {
+        pattern += if (one) SONY_ONE_MARK else SONY_ZERO_MARK
+        pattern += SONY_SPACE
+    }
+
+    private fun requireByte(value: Int, label: String) =
+        requireRange(value, 0, 0xFF, label)
+
+    private fun requireRange(value: Int, min: Int, max: Int, label: String) {
+        require(value in min..max) { "$label must be between $min and $max." }
+    }
+
+    private const val NEC_UNIT = 560
+    private const val NEC_ZERO_SPACE = 560
+    private const val NEC_ONE_SPACE = 1_690
+
+    private const val SAMSUNG_UNIT = 560
+    private const val SAMSUNG_ZERO_SPACE = 560
+    private const val SAMSUNG_ONE_SPACE = 1_690
+
+    private const val SONY_ZERO_MARK = 600
+    private const val SONY_ONE_MARK = 1_200
+    private const val SONY_SPACE = 600
+}

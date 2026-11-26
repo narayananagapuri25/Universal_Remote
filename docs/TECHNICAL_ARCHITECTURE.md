@@ -5,8 +5,8 @@
 | Document ID | UR-ARCH-001 |
 | Version | 1.0 |
 | Date | 2026-11-26 |
-| Status | Proposed architecture; implementation not started |
-| Target | Native Kotlin Android, min API 26 |
+| Status | Architecture baseline; initial Android and IR foundation implemented |
+| Target | Native Kotlin Android, min API 26; compile SDK API 37.2; target SDK API 36 |
 
 ## 1. Architecture principles
 
@@ -161,7 +161,13 @@ A capability router selects a viable `(protocol, transport)` pair using model pr
 
 ### 7.1 Built-in IR
 
-Use `ConsumerIrManager` only after checking `PackageManager.FEATURE_CONSUMER_IR`, `hasIrEmitter()` and `getCarrierFrequencies()`. Its public API transmits alternating on/off microsecond timings at a selected carrier frequency and documents a maximum pattern duration under two seconds. It does not expose a general IR receive/learning API. Therefore, IR learning requires a supported external receiver/accessory; a built-in transmitter alone is insufficient.
+Use `ConsumerIrManager` only after checking `PackageManager.FEATURE_CONSUMER_IR`, `hasIrEmitter()` and `getCarrierFrequencies()`. Its public API transmits alternating on/off microsecond timings at a selected carrier frequency and accepts patterns shorter than two seconds. It does not expose a general IR receive/learning API. Therefore, IR learning requires a supported external receiver/accessory; a built-in transmitter alone is insufficient.
+
+The first implementation now includes `AndroidConsumerIrDriver` and `BuiltInIrTransmitter`. It checks the optional consumer-IR feature, reports the actual carrier-frequency ranges, validates positive carrier frequency and pulse durations, caps signal segments, rejects unknown carrier ranges and enforces the platform's under-two-second limit. Transmits are dispatched on an IO coroutine and serialised through a mutex because the built-in emitter is a shared half-duplex resource. The result `Sent` means Android's synchronous transmit call returned; it never means the appliance state was confirmed. Pure unit tests use a fake driver. Physical transmission still needs a phone with a built-in emitter and a verified device profile.
+
+### 7.1.1 Implemented protocol encoder and profile layer
+
+The current branch independently implements typed NEC, NECext (16-bit address plus 16-bit command), Samsung32 and Sony SIRC12/15/20 encoders. It also provides immutable signal objects, a command dispatcher and model-specific IR profile/button data structures. A profile button can carry either a typed protocol command or a raw waveform; raw signals are validated before dispatch. A bounded Flipper-compatible version-1 `.ir` file codec imports/exports the supported parsed families and raw timing entries. Imported commands remain UNVERIFIED. Profile evidence is tracked per button, not per brand. Protocol-vector and profile-validation tests are required in CI. The encoder parameters do not constitute a brand/model code catalogue; no model-specific code set is bundled by this layer. The built-in Android Consumer IR API does not expose a duty-cycle argument, so raw duty cycle is preserved as metadata but not guaranteed by the built-in transmitter. IR receiver capture/learning and user-facing file picker workflow remain separate unfinished components. See [IR Protocol Implementation and Data Policy](PROTOCOL_IMPLEMENTATION.md) for protocol parameters, file format limits, evidence rules, source references and licence policy.
 
 ### 7.2 External IR
 
@@ -175,6 +181,8 @@ Create accessory adapters by verified vendor/API/device type: USB host/serial/HI
 - Manual IP/port configuration only for explicitly supported protocols.
 - Restrict traffic to local addresses and known service ports. No general-purpose port scanner.
 - Use authentication/TLS/pairing supported by the device. Record legacy unauthenticated transports and require user-visible warnings.
+- Android TV Remote v2 adapter: discover only `_androidtvremote2._tcp.` on the active LAN; pair on TLS port 6467 using the six-character code shown by the TV; keep the client RSA identity in Android Keystore; pin the TV certificate for subsequent TLS control connections on port 6466; negotiate key-control, optional IME and optional APP_LINK features before enabling each capability; reply to service pings; send text only after the TV reports a focused text field and its IME counters. App shortcuts use the protocol's `remote_app_link_launch_request` (RemoteMessage field 90) only when the TV advertises APP_LINK (feature bit 512). The first curated HTTPS links are YouTube, Netflix and Prime Video; these are best-effort intent links, not installed-app discovery or launch confirmation. No arbitrary user URL is accepted by the shortcut UI. There is no ADB, remote relay, cloud service or arbitrary port scan.
+- Android TV Remote v2 is presented through a manufacturer-neutral TV Remote entry point. Realme TechLife is the first physical test target, not the product identity; any manufacturer/model must expose a compatible Android TV Remote Service and complete physical pairing/control tests before it can be marked Physically tested.
 
 Android 17/API 37 enforces `ACCESS_LOCAL_NETWORK` for apps targeting API 37+ that use LAN sockets, mDNS, SSDP and `NsdManager`. Implement an OS/target-SDK-aware permission strategy. For API 37+, request broad local-network permission only when required for full home-automation discovery/control; handle denied/revoked gracefully. Use privacy-preserving system-mediated pickers where they cover a specific use case, but do not expect a casting picker to replace the app's broad control use case.
 
@@ -208,6 +216,8 @@ Trust is a local app state, not proof that a manufacturer authenticated the endp
 ## 9. Local persistence and backup
 
 Use Room for structured data and DataStore for small preferences. Database is the source of truth for user-saved profiles, local command mappings, scenes/schedules and state history. Keep catalogue source profiles immutable and store user customisations as overlays so catalogue updates cannot erase user work.
+
+The current Room schema is version 4. Version 3 adds `daikin_ac_profiles`, which stores complete desired AC settings (transport family, power, mode, setpoint, fan, swing and supported comfort flags) for offline save/load/update/delete. The 2-to-3 migration creates this table without modifying existing saved devices or imported IR profiles. Version 4 adds `ir_remote_control_mappings`, which stores the user's explicit mapping from a semantic TV/STB control role to an existing imported IR button. The 3-to-4 migration creates this table with cascade deletion when its parent imported profile is removed. Mappings are validated against the profile category and existing button IDs before saving or rendering. Unassigned roles remain disabled; role assignment never upgrades protocol or physical compatibility evidence. A selected Daikin family is persisted as a user configuration only; when a saved profile is loaded, the UI clears the session confirmation and requires the user to check the original remote marking again before sending. No persisted field represents physical compatibility verification.
 
 Encrypt sensitive credentials/tokens with AES-GCM keys generated/stored in Android Keystore. Prefer hardware-backed keys where present, but treat hardware backing as optional. Android Keystore key material is protected from extraction, but a compromised app process may still be able to invoke permitted operations; do not overstate it as complete app compromise protection.
 
@@ -245,7 +255,7 @@ Play Billing integration is confined to the Play-distributed build. A Google Pla
 ## 15. Build, signing and CI
 
 - Kotlin + Android Gradle Plugin + Gradle wrapper + version catalog; pin compatible stable versions at first implementation.
-- `minSdk=26`; at the research date Play submissions require `targetSdk >= 36`. Recheck current Play target policy at each release. Proactively test API 37 permission behavior.
+- `minSdk=26`; the initial app foundation compiles against API 37.2 because stable Compose 1.12.1 metadata requires it, while `targetSdk=36` keeps Android 17/API 37 local-network runtime permission enforcement out of the initial target behaviour. Recheck current Play target policy at each release. When raising `targetSdk` to 37, implement and test `ACCESS_LOCAL_NETWORK` before enabling LAN discovery/control.
 - Lint/static checks, format, unit tests, protocol golden vectors, app build, instrumentation tests and artifact verification are mandatory CI gates.
 - Feature branches and pull requests only. No direct development commits to `main`; explicit user approval before each merge.
 - Signing private key kept out of repository. User owns the key; CI secrets protect signing material; offline encrypted backups retained. Use same signing identity for updates.
