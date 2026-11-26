@@ -25,6 +25,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -47,6 +48,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -76,11 +78,11 @@ import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.UUID
 
-private enum class Destination(val label: String) {
-    DEVICES("Devices"),
-    DISCOVER("Discover"),
-    REALME_TV("TV"),
-    SETTINGS("Settings")
+private enum class Destination(val label: String, val icon: Int) {
+    DEVICES("Devices", R.drawable.ic_nav_devices),
+    DISCOVER("Discover", R.drawable.ic_nav_discover),
+    TV_REMOTE("TV", R.drawable.ic_nav_tv),
+    SETTINGS("Settings", R.drawable.ic_nav_settings)
 }
 
 private sealed interface ImportState {
@@ -267,7 +269,7 @@ private fun OneRemoteApp(
                             openDaikinAc -> "Daikin AC · Experimental"
                             openProfileId != null ->
                                 (currentRemoteState as? RemoteLoadState.Loaded)?.profile?.displayName ?: "Remote"
-                            destination == Destination.REALME_TV -> "Realme TechLife TV"
+                            destination == Destination.TV_REMOTE -> "TV Remote"
                             else -> "OneRemote"
                         },
                         fontWeight = FontWeight.SemiBold
@@ -293,7 +295,12 @@ private fun OneRemoteApp(
                         NavigationBarItem(
                             selected = destination == item,
                             onClick = { destination = item },
-                            icon = { Text(item.label.take(1)) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = item.icon),
+                                    contentDescription = null
+                                )
+                            },
                             label = { Text(item.label) }
                         )
                     }
@@ -403,7 +410,7 @@ private fun OneRemoteApp(
                         },
                         onClearImport = { importState = ImportState.Idle }
                     )
-                    Destination.REALME_TV -> RealmeTvRemoteScreen()
+                    Destination.TV_REMOTE -> AndroidTvRemoteScreen()
                     Destination.SETTINGS -> SettingsScreen()
                 }
             }
@@ -599,7 +606,7 @@ private fun DiscoverScreen(
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                "Automatic network and Bluetooth discovery are being implemented. You can already import a compatible Flipper .ir remote profile.",
+                "Find compatible Android TVs in the TV Remote tab, or import a Flipper Zero .ir profile for an IR-controlled device. Bluetooth discovery is not yet supported.",
                 style = MaterialTheme.typography.bodyLarge
             )
         }

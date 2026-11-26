@@ -221,13 +221,28 @@ class AndroidTvRemoteClient(context: Context) {
     }
 
     fun loadSavedTv(): SavedAndroidTv? {
+        val storedIdentityVersion = preferences.getInt(KEY_IDENTITY_VERSION, 1)
+        if (storedIdentityVersion < IDENTITY_VERSION) {
+            // The previous Android Keystore key did not permit RSA-PSS signatures.
+            // It cannot be reused for the updated TLS identity, so require a fresh pairing.
+            preferences.edit()
+                .remove(KEY_HOST)
+                .remove(KEY_NAME)
+                .remove(KEY_FINGERPRINT)
+                .putInt(KEY_IDENTITY_VERSION, IDENTITY_VERSION)
+                .apply()
+            return null
+        }
         val host = preferences.getString(KEY_HOST, null) ?: return null
         val fingerprint = preferences.getString(KEY_FINGERPRINT, null) ?: return null
-        val name = preferences.getString(KEY_NAME, "Realme TechLife TV") ?: "Realme TechLife TV"
+        val name = preferences.getString(KEY_NAME, "Android TV") ?: "Android TV"
         return SavedAndroidTv(name, host, fingerprint)
     }
 
-    suspend fun preparePairing(hostInput: String): PairingChallenge {
+    suspend fun preparePairing(
+        hostInput: String,
+        discoveredName: String = "Android TV"
+    ): PairingChallenge {
         val host = normalizeHost(hostInput)
         val identity = ensureClientIdentity()
         val socket = createTlsSocket(host, PAIRING_PORT, identity, null)
@@ -262,7 +277,7 @@ class AndroidTvRemoteClient(context: Context) {
             socket.soTimeout = PAIRING_CODE_TIMEOUT_MS
             return PairingChallenge(
                 host = host,
-                displayName = "Realme TechLife TV",
+                displayName = discoveredName.ifBlank { "Android TV" },
                 socket = socket,
                 input = input,
                 output = output,
@@ -375,7 +390,10 @@ class AndroidTvRemoteClient(context: Context) {
             )
                 .setKeySize(2048)
                 .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
-                .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
+                .setSignaturePaddings(
+                    KeyProperties.SIGNATURE_PADDING_RSA_PKCS1,
+                    KeyProperties.SIGNATURE_PADDING_RSA_PSS
+                )
                 .setCertificateSubject(subject)
                 .setCertificateSerialNumber(BigInteger.ONE)
                 .setCertificateNotBefore(Date(now - 60_000L))
@@ -460,7 +478,9 @@ class AndroidTvRemoteClient(context: Context) {
         const val KEY_NAME = "name"
         const val KEY_FINGERPRINT = "certificate_fingerprint"
         const val ANDROID_KEYSTORE = "AndroidKeyStore"
-        const val CLIENT_KEY_ALIAS = "oneremote_android_tv_client"
+        const val CLIENT_KEY_ALIAS = "oneremote_android_tv_client_v2"
+        const val KEY_IDENTITY_VERSION = "identity_version"
+        const val IDENTITY_VERSION = 2
         const val STATUS_OK = 200
         const val PAIRING_PORT = 6467
         const val REMOTE_PORT = 6466

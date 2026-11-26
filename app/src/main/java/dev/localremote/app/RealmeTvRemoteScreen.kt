@@ -56,7 +56,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun RealmeTvRemoteScreen() {
+fun AndroidTvRemoteScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val client = remember(context) { AndroidTvRemoteClient(context) }
@@ -112,7 +112,7 @@ fun RealmeTvRemoteScreen() {
     }
 
     fun updateConnectionStatus(message: String) {
-        status = message
+        status = friendlyTvError(message)
         if (message.startsWith("Connected to Android TV")) {
             connected = true
         } else if (
@@ -184,15 +184,17 @@ fun RealmeTvRemoteScreen() {
         status = "Connecting to the TV pairing service…"
         scope.launch {
             try {
-                val pending = withContext(Dispatchers.IO) { client.preparePairing(host) }
+                val discoveredName = discovered.firstOrNull { it.host == host }?.name ?: "Android TV"
+                val pending = withContext(Dispatchers.IO) {
+                    client.preparePairing(host, discoveredName)
+                }
                 challenge?.close()
                 challenge = pending
                 pairingCode = ""
                 showPairingDialog = true
                 status = "The TV should now display a six-character pairing code."
             } catch (failure: Throwable) {
-                status = failure.message
-                    ?: "Pairing could not start. Check Android TV Remote Service on the TV."
+                status = friendlyTvError(failure)
             } finally {
                 pairingBusy = false
             }
@@ -229,7 +231,7 @@ fun RealmeTvRemoteScreen() {
                     pending.close()
                     challenge = null
                     showPairingDialog = false
-                    status = failure.message ?: "Pairing failed. Start pairing again on the TV."
+                    status = friendlyTvError(failure)
                 }
             } finally {
                 pairingBusy = false
@@ -264,7 +266,7 @@ fun RealmeTvRemoteScreen() {
             }.onSuccess {
                 status = shortcut.label + " launch request sent. The TV must have an installed app that handles this link."
             }.onFailure { failure ->
-                status = failure.message ?: "The TV could not accept the app launch request."
+                status = friendlyTvError(failure)
             }
         }
     }
@@ -283,7 +285,7 @@ fun RealmeTvRemoteScreen() {
                 textToSend = ""
                 status = "Text sent to the active TV text field."
             }.onFailure { failure ->
-                status = failure.message ?: "Text could not be sent to the TV."
+                status = friendlyTvError(failure)
             }
         }
     }
@@ -295,12 +297,12 @@ fun RealmeTvRemoteScreen() {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    "Realme TechLife TV",
+                    "TV Remote",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    "Direct Android TV remote over your home Wi-Fi. No IR blaster, ADB, root or cloud relay is used for this connection.",
+                    "Control compatible Android TV and Google TV devices over your home Wi-Fi. Pair once, then use navigation, playback, app shortcuts and phone keyboard input.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -781,6 +783,24 @@ fun RealmeTvRemoteScreen() {
                 }) { Text("Cancel") }
             }
         )
+    }
+}
+
+
+private fun friendlyTvError(failure: Throwable): String =
+    friendlyTvError(failure.message ?: "The TV operation could not be completed.")
+
+private fun friendlyTvError(message: String): String {
+    val detail = message.lowercase()
+    return when {
+        "rsa routines" in detail || "ssl library" in detail ||
+            "sslprotocol" in detail || "handshake" in detail ->
+            "The secure TV connection failed. Restart Android TV Remote Service on the TV, then pair again. If this TV was paired before the security update, remove its saved pairing and pair it again."
+        "certificate changed" in detail ->
+            "The TV security certificate has changed. Forget this saved TV and pair it again."
+        "timeout" in detail || "timed out" in detail ->
+            "The TV did not respond. Make sure it is awake and both devices are on the same Wi-Fi."
+        else -> message
     }
 }
 
