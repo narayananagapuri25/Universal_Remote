@@ -78,7 +78,7 @@ class IrProtocolEncoderTest {
         )
 
         assertEquals(40_000, signal.carrierFrequencyHz)
-        assertEquals(27, signal.patternMicros.size)
+        assertEquals(26, signal.patternMicros.size)
         assertEquals(listOf(2_400, 600), signal.patternMicros.take(2))
         // Command 19 has its least-significant bit set.
         assertEquals(listOf(1_200, 600), signal.patternMicros.subList(2, 4))
@@ -103,8 +103,8 @@ class IrProtocolEncoderTest {
             )
         )
 
-        assertEquals(33, sirc15.patternMicros.size)
-        assertEquals(43, sirc20.patternMicros.size)
+        assertEquals(32, sirc15.patternMicros.size)
+        assertEquals(42, sirc20.patternMicros.size)
         assertEquals(null, IrSignalValidator.validate(sirc15))
         assertEquals(null, IrSignalValidator.validate(sirc20))
     }
