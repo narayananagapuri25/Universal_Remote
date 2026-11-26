@@ -2,7 +2,6 @@ package dev.localremote.app.data.local
 
 import androidx.room.Dao
 import androidx.room.Embedded
-import androidx.room.Upsert
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
