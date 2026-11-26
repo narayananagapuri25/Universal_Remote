@@ -37,6 +37,7 @@ import dev.localremote.app.connectivity.infrared.IrTransmitResult
 import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcCommandDispatcher
 import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcFanSpeed
 import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcMode
+import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcRemotePolicy
 import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcState
 import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcTransportVariant
 import kotlinx.coroutines.launch
@@ -65,12 +66,15 @@ internal fun DaikinAcRemoteScreen(
     var feedback by remember { mutableStateOf<String?>(null) }
 
     val variant = variantName?.let { DaikinAcTransportVariant.valueOf(it) }
-    val carrierReady = irHardware?.supportsCarrierFrequency(38_000) == true
     val temperatureRange = temperatureRangeFor(mode)
-    val comfortConflict = fanSpeed == DaikinAcFanSpeed.COMFORT &&
-        (variant != DaikinAcTransportVariant.THREE_FRAME || verticalSwing)
-    val canSend = variant != null && familyConfirmed && carrierReady &&
-        !sending && !comfortConflict
+    val sendBlockReason = DaikinAcRemotePolicy.sendBlockReason(
+        hardware = irHardware,
+        variant = variant,
+        familyConfirmed = familyConfirmed,
+        fanSpeed = fanSpeed,
+        verticalSwing = verticalSwing
+    )
+    val canSend = !sending && sendBlockReason == null
 
     Column(
         modifier = Modifier
@@ -297,6 +301,13 @@ internal fun DaikinAcRemoteScreen(
                     color = MaterialTheme.colorScheme.tertiary
                 )
             }
+            if (powerful && fanSpeed == DaikinAcFanSpeed.COMFORT) {
+                Text(
+                    "Powerful mode downgrades Comfort fan to Auto in the transmitted state.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            }
         }
 
         ControlSection("Send complete state") {
@@ -304,12 +315,12 @@ internal fun DaikinAcRemoteScreen(
                 "Sending replaces the AC's current settings with all values shown above. One tap sends one frame sequence; OneRemote never retries automatically.",
                 style = MaterialTheme.typography.bodySmall
             )
-            when {
-                irHardware == null -> Text("Checking the phone's IR transmitter…")
-                !irHardware.transmitterAvailable ->
-                    Text("No built-in IR transmitter is available on this phone.")
-                !carrierReady ->
-                    Text("This phone does not report support for the required 38 kHz carrier. Nothing can be sent.")
+            if (!sending && !sendBlockReason.isNullOrBlank()) {
+                Text(
+                    sendBlockReason,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
             Button(
                 onClick = {
