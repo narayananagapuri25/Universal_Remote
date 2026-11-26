@@ -26,25 +26,45 @@ class IrProtocolEncoderTest {
     @Test
     fun necExtendedEncodesSixteenBitAddressWithoutAddressComplement() {
         val signal = IrProtocolEncoder.encode(
-            IrProtocolCommand.NecExtended(address = 0x1234, command = 0xA5)
+            IrProtocolCommand.NecExtended(address = 0x87EE, command = 0xA05D)
         )
 
         assertEquals(38_000, signal.carrierFrequencyHz)
         assertEquals(67, signal.patternMicros.size)
-        // Least significant address byte is 0x34; its first bit is zero.
-        assertEquals(listOf(560, 560), signal.patternMicros.subList(2, 4))
+        // Flipper .ir stores both 16-bit payload values little-endian:
+        // address EE 87 00 00, command 5D A0 00 00.
+        assertEquals(
+            listOf(560, 560, 560, 560, 560, 560, 560, 1_690),
+            signal.patternMicros.subList(2, 18).filterIndexed { index, _ -> index % 2 == 0 }
+        )
+        assertEquals(
+            listOf(1_690, 560, 1_690, 1_690, 560, 1_690, 560, 560),
+            signal.patternMicros.subList(18, 34).filterIndexed { index, _ -> index % 2 == 0 }
+        )
         assertEquals(null, IrSignalValidator.validate(signal))
     }
 
     @Test
-    fun necExtendedRejectsLegacyAddressEncodedAsInversePair() {
-        val error = runCatching {
-            IrProtocolEncoder.encode(
-                IrProtocolCommand.NecExtended(address = 0x34CB, command = 0x10)
-            )
+    fun necExtendedAcceptsAnAddressWhoseBytesHappenToBeAnInversePair() {
+        val signal = IrProtocolEncoder.encode(
+            IrProtocolCommand.NecExtended(address = 0x34CB, command = 0xA055)
+        )
+
+        assertEquals(67, signal.patternMicros.size)
+        assertEquals(null, IrSignalValidator.validate(signal))
+    }
+
+    @Test
+    fun necExtendedRejectsPayloadFieldsWiderThanSixteenBits() {
+        val addressError = runCatching {
+            IrProtocolEncoder.encode(IrProtocolCommand.NecExtended(0x1_0000, 0x1234))
+        }.exceptionOrNull()
+        val commandError = runCatching {
+            IrProtocolEncoder.encode(IrProtocolCommand.NecExtended(0x1234, 0x1_0000))
         }.exceptionOrNull()
 
-        assertTrue(error is IllegalArgumentException)
+        assertTrue(addressError is IllegalArgumentException)
+        assertTrue(commandError is IllegalArgumentException)
     }
 
     @Test
