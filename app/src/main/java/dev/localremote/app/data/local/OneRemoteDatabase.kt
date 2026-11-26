@@ -9,20 +9,49 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     entities = [
         SavedDeviceEntity::class,
         IrRemoteProfileEntity::class,
-        IrRemoteButtonEntity::class
+        IrRemoteButtonEntity::class,
+        DaikinAcProfileEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class OneRemoteDatabase : RoomDatabase() {
     abstract fun savedDeviceDao(): SavedDeviceDao
     abstract fun irRemoteProfileDao(): IrRemoteProfileDao
+    abstract fun daikinAcProfileDao(): DaikinAcProfileDao
 
     companion object {
         /**
          * Preserve version-1 saved devices when adding the local IR profile library.
          * The foreign key guarantees deleting a profile also removes its buttons.
          */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `daikin_ac_profiles` (
+                        `profileId` TEXT NOT NULL,
+                        `displayName` TEXT NOT NULL,
+                        `power` INTEGER NOT NULL,
+                        `mode` TEXT NOT NULL,
+                        `temperatureCelsius` REAL NOT NULL,
+                        `fanSpeed` TEXT NOT NULL,
+                        `verticalSwing` INTEGER NOT NULL,
+                        `horizontalSwing` INTEGER NOT NULL,
+                        `intelligentEye` INTEGER NOT NULL,
+                        `econo` INTEGER NOT NULL,
+                        `outdoorQuiet` INTEGER NOT NULL,
+                        `powerful` INTEGER NOT NULL,
+                        `weeklyScheduleActive` INTEGER NOT NULL,
+                        `transportVariant` TEXT NOT NULL,
+                        `updatedAtEpochMillis` INTEGER NOT NULL,
+                        PRIMARY KEY(`profileId`)
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
