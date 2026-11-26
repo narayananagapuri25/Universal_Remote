@@ -10,9 +10,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SavedDeviceEntity::class,
         IrRemoteProfileEntity::class,
         IrRemoteButtonEntity::class,
-        DaikinAcProfileEntity::class
+        DaikinAcProfileEntity::class,
+        IrRemoteControlMappingEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class OneRemoteDatabase : RoomDatabase() {
@@ -21,6 +22,25 @@ abstract class OneRemoteDatabase : RoomDatabase() {
     abstract fun daikinAcProfileDao(): DaikinAcProfileDao
 
     companion object {
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `ir_remote_control_mappings` (
+                        `profileId` TEXT NOT NULL,
+                        `role` TEXT NOT NULL,
+                        `buttonId` TEXT NOT NULL,
+                        PRIMARY KEY(`profileId`, `role`),
+                        FOREIGN KEY(`profileId`) REFERENCES `ir_remote_profiles`(`profileId`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_ir_remote_control_mappings_profileId` ON `ir_remote_control_mappings` (`profileId`)"
+                )
+            }
+        }
+
         /**
          * Preserve version-1 saved devices when adding the local IR profile library.
          * The foreign key guarantees deleting a profile also removes its buttons.
