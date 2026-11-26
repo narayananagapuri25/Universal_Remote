@@ -36,35 +36,47 @@ class AndroidTvProtocolCodecTest {
 
     @Test
     fun pairingSecretMatchesKnownSha256Vector() {
-        val factory = KeyFactory.getInstance("RSA")
-        val client = factory.generatePublic(
-            RSAPublicKeySpec(BigInteger.valueOf(3233), BigInteger.valueOf(17))
-        ) as RSAPublicKey
-        val server = factory.generatePublic(
-            RSAPublicKeySpec(BigInteger.valueOf(2773), BigInteger.valueOf(13))
-        ) as RSAPublicKey
+        val (client, server) = publicKeyFixtures()
 
-        val secret = AndroidTvPairingSecret.calculate("611234", client, server)
+        val secret = AndroidTvPairingSecret.calculate("441234", client, server)
 
         assertEquals(
-            "6141428ba5eb45b97f9056588b41119d47fcd99cc5d799f5aa972a2db5d1f722",
+            "44b9a40f46e00835899299c59d664ce88073baa0f609ca2dd3866cdc538d535f",
             secret.toHex()
         )
     }
 
     @Test
     fun pairingSecretRejectsWrongDisplayedCheckByte() {
-        val factory = KeyFactory.getInstance("RSA")
-        val client = factory.generatePublic(
-            RSAPublicKeySpec(BigInteger.valueOf(3233), BigInteger.valueOf(17))
-        ) as RSAPublicKey
-        val server = factory.generatePublic(
-            RSAPublicKeySpec(BigInteger.valueOf(2773), BigInteger.valueOf(13))
-        ) as RSAPublicKey
+        val (client, server) = publicKeyFixtures()
 
         assertThrows(IllegalArgumentException::class.java) {
-            AndroidTvPairingSecret.calculate("621234", client, server)
+            AndroidTvPairingSecret.calculate("451234", client, server)
         }
+    }
+
+    private fun publicKeyFixtures(): Pair<RSAPublicKey, RSAPublicKey> {
+        val factory = KeyFactory.getInstance("RSA")
+        val exponent = BigInteger.valueOf(65537)
+        val client = factory.generatePublic(
+            RSAPublicKeySpec(
+                BigInteger(
+                    "D3A5B7C9E1F2031425364758697A8B9CADBECFE0F102132435465768798A9BACBDCEDFF00112233445566778899AABBCCDDEEFF112233445566778899AABBCCD",
+                    16
+                ),
+                exponent
+            )
+        ) as RSAPublicKey
+        val server = factory.generatePublic(
+            RSAPublicKeySpec(
+                BigInteger(
+                    "C7D9EBFD0F21334557697B8D9FA1B3C5D7E9FB0D1F31435567798B9DAFC1D3E5F7192B3D4F5163758799BADCFE1032547698BADCFEDCBA9876543210FEDCBA987654321",
+                    16
+                ),
+                exponent
+            )
+        ) as RSAPublicKey
+        return client to server
     }
 
     private fun ByteArray.toHex(): String =
