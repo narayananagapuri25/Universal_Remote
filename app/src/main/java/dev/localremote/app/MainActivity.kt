@@ -704,6 +704,7 @@ private fun RemoteScreen(
             RemoteButtonCard(
                 button = button,
                 isSending = sendingButtonId == button.id,
+                canSend = sendingButtonId == null,
                 onSend = {
                     if (sendingButtonId == null) {
                         sendingButtonId = button.id
@@ -753,6 +754,7 @@ private fun RemoteScreen(
 private fun RemoteButtonCard(
     button: IrRemoteButton,
     isSending: Boolean,
+    canSend: Boolean,
     onSend: () -> Unit
 ) {
     Card(
@@ -777,7 +779,7 @@ private fun RemoteButtonCard(
                     color = MaterialTheme.colorScheme.tertiary
                 )
             }
-            Button(onClick = onSend, enabled = !isSending) {
+            Button(onClick = onSend, enabled = canSend) {
                 if (isSending) CircularProgressIndicator()
                 else Text("Send")
             }
