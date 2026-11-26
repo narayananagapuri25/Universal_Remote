@@ -150,7 +150,9 @@ private fun OneRemoteApp(
             importState = ImportState.Reading
             scope.launch {
                 val parsed = runCatching {
-                    val source = readTextBounded(context, uri)
+                    val source = withContext(Dispatchers.IO) {
+                        readTextBounded(context, uri)
+                    }
                     val metadata = FlipperIrFileCodec.ImportMetadata(
                         profileId = UUID.randomUUID().toString(),
                         category = importCategory,
@@ -194,10 +196,12 @@ private fun OneRemoteApp(
                         exportMessage = export.errors.joinToString("\n")
                     }
                     is FlipperIrFileCodec.ExportResult.Success -> {
-                        val writeResult = runCatching {
-                            context.contentResolver.openOutputStream(uri, "w")?.use { stream ->
-                                stream.write(export.content.toByteArray(Charsets.UTF_8))
-                            } ?: error("Android could not open the selected destination.")
+                        val writeResult = withContext(Dispatchers.IO) {
+                            runCatching {
+                                context.contentResolver.openOutputStream(uri, "w")?.use { stream ->
+                                    stream.write(export.content.toByteArray(Charsets.UTF_8))
+                                } ?: error("Android could not open the selected destination.")
+                            }
                         }
                         exportMessage = writeResult.fold(
                             onSuccess = {
