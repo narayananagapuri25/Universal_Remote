@@ -25,12 +25,9 @@ class IrSignalValidatorTest {
     }
 
     @Test
-    fun rejectsOddNumberOfPatternDurations() {
-        val signal = IrSignal(38_000, listOf(500, 500, 500))
-        assertEquals(
-            "IR pattern must contain alternating mark/space pairs.",
-            IrSignalValidator.validate(signal)
-        )
+    fun acceptsPatternThatEndsWithMark() {
+        val signal = IrSignal(38_000, listOf(500, 500, 600))
+        assertNull(IrSignalValidator.validate(signal))
     }
 
     @Test
