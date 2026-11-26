@@ -49,6 +49,7 @@ import dev.localremote.app.connectivity.androidtv.AndroidTvDiscovery
 import dev.localremote.app.connectivity.androidtv.AndroidTvEndpoint
 import dev.localremote.app.connectivity.androidtv.AndroidTvRemoteClient
 import dev.localremote.app.connectivity.androidtv.AndroidTvRemoteSession
+import dev.localremote.app.connectivity.androidtv.AndroidTvAppShortcut
 import dev.localremote.app.connectivity.androidtv.SavedAndroidTv
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -75,6 +76,7 @@ fun RealmeTvRemoteScreen() {
     var powerState by remember { mutableStateOf<String?>(null) }
     var volumeState by remember { mutableStateOf<String?>(null) }
     var textInputAvailable by remember { mutableStateOf(false) }
+    var appLinksAvailable by remember { mutableStateOf(false) }
     var textInputHint by remember { mutableStateOf("TV text input") }
     var textToSend by rememberSaveable { mutableStateOf("") }
     var selectedMode by rememberSaveable { mutableStateOf("Remote") }
@@ -120,6 +122,7 @@ fun RealmeTvRemoteScreen() {
         ) {
             connected = false
             textInputAvailable = false
+            appLinksAvailable = false
         }
     }
 
@@ -128,6 +131,7 @@ fun RealmeTvRemoteScreen() {
         connecting = true
         connected = false
         textInputAvailable = false
+        appLinksAvailable = false
         textInputHint = "TV text input"
         status = "Connecting securely to ${tv.host}…"
         scope.launch {
@@ -149,6 +153,9 @@ fun RealmeTvRemoteScreen() {
                         onTextInputState = { available, label ->
                             textInputAvailable = available
                             textInputHint = label
+                        },
+                        onAppLinkSupport = { available ->
+                            appLinksAvailable = available
                         }
                     )
                 }
@@ -241,6 +248,23 @@ fun RealmeTvRemoteScreen() {
                 withContext(Dispatchers.IO) { active.sendKey(code) }
             }.onFailure { failure ->
                 updateConnectionStatus(failure.message ?: "The TV did not accept this key.")
+            }
+        }
+    }
+
+    fun launchApp(shortcut: AndroidTvAppShortcut) {
+        val active = session
+        if (!connected || !appLinksAvailable || active == null) {
+            status = "This TV has not advertised app-link launch support."
+            return
+        }
+        scope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { active.launchApp(shortcut) }
+            }.onSuccess {
+                status = shortcut.label + " launch request sent. The TV must have an installed app that handles this link."
+            }.onFailure { failure ->
+                status = failure.message ?: "The TV could not accept the app launch request."
             }
         }
     }
@@ -395,6 +419,7 @@ fun RealmeTvRemoteScreen() {
                         powerState = null
                         volumeState = null
                         textInputAvailable = false
+                        appLinksAvailable = false
                         textInputHint = "TV text input"
                         textToSend = ""
                         showConnectionSetup = true
@@ -448,6 +473,39 @@ fun RealmeTvRemoteScreen() {
                         TvKeyButton("Back", 4, connected, ::sendKey, Modifier.weight(1f))
                         TvKeyButton("Home", 3, connected, ::sendKey, Modifier.weight(1f))
                         TvKeyButton("Menu", 82, connected, ::sendKey, Modifier.weight(1f))
+                    }
+                }
+            }
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("Favourite apps", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            AndroidTvAppShortcut.entries.forEach { shortcut ->
+                                OutlinedButton(
+                                    onClick = { launchApp(shortcut) },
+                                    enabled = connected && appLinksAvailable,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(shortcut.label, style = MaterialTheme.typography.labelMedium)
+                                }
+                            }
+                        }
+                        Text(
+                            when {
+                                !connected -> "Connect to your TV to use app shortcuts."
+                                !appLinksAvailable -> "This TV does not advertise app-link launch support."
+                                else -> "Opens the matching installed TV app, when it handles the selected link."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }

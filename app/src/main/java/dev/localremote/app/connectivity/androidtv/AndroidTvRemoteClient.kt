@@ -307,7 +307,8 @@ class AndroidTvRemoteClient(context: Context) {
         onStatus: (String) -> Unit,
         onPowerState: (Boolean) -> Unit,
         onVolume: (Int, Int, Boolean) -> Unit,
-        onTextInputState: (Boolean, String) -> Unit
+        onTextInputState: (Boolean, String) -> Unit,
+        onAppLinkSupport: (Boolean) -> Unit
     ): AndroidTvRemoteSession {
         val identity = ensureClientIdentity()
         val socket = createTlsSocket(
@@ -316,7 +317,14 @@ class AndroidTvRemoteClient(context: Context) {
             identity,
             saved.certificateFingerprint
         )
-        return AndroidTvRemoteSession(socket, onStatus, onPowerState, onVolume, onTextInputState).also {
+        return AndroidTvRemoteSession(
+            socket,
+            onStatus,
+            onPowerState,
+            onVolume,
+            onTextInputState,
+            onAppLinkSupport
+        ).also {
             it.start()
         }
     }
@@ -468,7 +476,8 @@ class AndroidTvRemoteSession internal constructor(
     private val onStatus: (String) -> Unit,
     private val onPowerState: (Boolean) -> Unit,
     private val onVolume: (Int, Int, Boolean) -> Unit,
-    private val onTextInputState: (Boolean, String) -> Unit
+    private val onTextInputState: (Boolean, String) -> Unit,
+    private val onAppLinkSupport: (Boolean) -> Unit
 ) : AutoCloseable {
     @Volatile private var ready = false
     @Volatile private var closed = false
@@ -520,6 +529,14 @@ class AndroidTvRemoteSession internal constructor(
         sendRemoteMessage(10, keyInject)
     }
 
+    fun launchApp(shortcut: AndroidTvAppShortcut) {
+        check(!closed && ready) { "The TV remote session is not ready." }
+        check(negotiatedFeatures and FEATURE_APP_LINK != 0) {
+            "This TV remote service does not support app-link launch."
+        }
+        sendRemoteMessage(90, AndroidTvAppLinkLaunchEncoder.encode(shortcut))
+    }
+
     fun sendText(text: String) {
         check(!closed && ready) { "The TV remote session is not ready." }
         check(negotiatedFeatures and FEATURE_IME != 0) {
@@ -546,7 +563,10 @@ class AndroidTvRemoteSession internal constructor(
         if (configure != null) {
             val configFields = ProtoReader.parse(configure)
             val supportedFeatures = ProtoReader.firstNumber(configFields, 1)?.toInt() ?: 0
-            negotiatedFeatures = supportedFeatures and FEATURE_KEY_PING_POWER_VOLUME
+            negotiatedFeatures = supportedFeatures and FEATURE_SUPPORTED
+            mainHandler.post {
+                onAppLinkSupport(negotiatedFeatures and FEATURE_APP_LINK != 0)
+            }
             if (negotiatedFeatures and FEATURE_KEY == 0) {
                 error("This TV remote service does not offer key control.")
             }
@@ -686,8 +706,10 @@ class AndroidTvRemoteSession internal constructor(
         const val FEATURE_IME = 4
         const val FEATURE_POWER = 32
         const val FEATURE_VOLUME = 64
+        const val FEATURE_APP_LINK = 512
         const val FEATURE_KEY_PING_POWER_VOLUME =
             FEATURE_PING or FEATURE_KEY or FEATURE_IME or FEATURE_POWER or FEATURE_VOLUME
+        const val FEATURE_SUPPORTED = FEATURE_KEY_PING_POWER_VOLUME or FEATURE_APP_LINK
     }
 }
 
