@@ -4,7 +4,7 @@
 |---|---|
 | Document ID | UR-AC-001 |
 | Version | 0.1 |
-| Status | Independent state-frame encoder and one-shot dispatcher implemented; no user-facing Daikin state editor yet |
+| Status | Independent encoder, one-shot dispatcher and experimental user-facing full-state editor implemented; physical compatibility not verified |
 
 ## 1. Model scope
 
@@ -50,7 +50,7 @@ Files:
 - \`DaikinAcCommandDispatcher.kt\` — one-shot dispatch to the shared IR transmitter, no automatic retry.
 - \`DaikinAcEncoderTest.kt\` and \`DaikinAcCommandDispatcherTest.kt\` — golden frames, checksum, timing lengths, state boundaries, mutual exclusion and dispatch tests.
 
-The engine is not yet connected to the saved-profile schema or the user-facing AC remote editor. The current app UI imports static \`.ir\` button profiles; it does not yet expose a dynamic Daikin mode/temperature/fan/swing editor. Do not advertise Daikin AC control as user-ready until that editor and a model-specific profile are added and physically tested.
+The app now exposes an experimental Daikin AC state editor from Discover. The user must manually select either the ARC466A9-style three-frame transport or ARC480A11-style one-frame transport and acknowledge that selection before the Send button can be enabled. The screen exposes absolute power, mode, half-degree temperature, fan, swing, Intelligent Eye, Econo, Outdoor Quiet and Powerful controls. It checks the phone's reported 38 kHz support and transmits one complete target state per tap with no retry. Dry mode uses the protocol's no-setpoint value; Powerful precedence and Comfort-fan restrictions are surfaced in the UI. The selected AC state is currently transient and is not yet stored as a durable saved-device profile. There is no automatic model detection and no bundled model-specific Daikin code catalogue. Do not advertise this as general or physically verified Daikin compatibility. A physical test record for each supported model/remote combination is still required.
 
 A successful Android transmit call means only that the signal-dispatch API returned. It does not confirm the air conditioner received or applied the state.
 
@@ -72,3 +72,20 @@ Candidate protocol/code datasets still require provenance, file-level licensing 
 - Android ConsumerIrManager contract (carrier support and raw timing dispatch; no duty-cycle parameter): https://developer.android.com/reference/android/hardware/ConsumerIrManager
 
 The protocol information is reverse-engineered/community documented. It is not a manufacturer-issued universal protocol specification. Compatibility labels remain Unverified until OneRemote has the correct model profile and performs the required protocol or physical tests.
+
+
+## 7. Experimental user interface and manual test gate
+
+The current screen is intentionally labelled **Experimental Daikin AC control** and is reached from Discover. It is a protocol test interface, not a verified device catalogue entry.
+
+Manual checks required on a phone with a built-in IR emitter before any compatibility claim:
+
+1. Confirm the original remote/model marking corresponds to the selected ARC466A9-style or ARC480A11-style transport. Do not guess the family.
+2. Confirm the app disables sending if no built-in transmitter is present or the reported carrier ranges do not include 38 kHz.
+3. For every mode, verify temperature range and 0.5 °C increments; Dry must show that it transmits no setpoint.
+4. Verify Comfort fan is unavailable for the one-frame family and cannot be combined with vertical swing.
+5. Verify Powerful precedence messaging when Econo or Outdoor Quiet are selected.
+6. Send a known safe test state to the exact appliance while observing its display; record the appliance model, original remote model, phone model, Android version, selected transport, state and observed result.
+7. Verify that the UI reports only “IR signal sent” and never claims the AC state was confirmed.
+
+The state editor is not yet persisted as a reusable saved AC profile. Timer programming, schedule programming, automatic feedback/state detection, remote-family auto-detection, and device-specific physical compatibility remain out of scope until separately verified.
