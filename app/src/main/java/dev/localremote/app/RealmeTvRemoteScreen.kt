@@ -174,10 +174,18 @@ fun RealmeTvRemoteScreen() {
                 status = "TV paired. Opening the remote connection…"
                 connectToSaved(tv)
             } catch (failure: Throwable) {
-                pending.close()
-                challenge = null
-                showPairingDialog = false
-                status = failure.message ?: "Pairing failed. Start pairing again on the TV."
+                val message = failure.message.orEmpty()
+                if (message.contains("code check did not match", ignoreCase = true)) {
+                    // The local checksum rejected the entry before the pairing socket was
+                    // consumed, so keep the active challenge and let the user retry.
+                    pairingCode = ""
+                    status = "That code does not match this TV challenge. Re-enter the six-character code shown on the TV."
+                } else {
+                    pending.close()
+                    challenge = null
+                    showPairingDialog = false
+                    status = failure.message ?: "Pairing failed. Start pairing again on the TV."
+                }
             } finally {
                 pairingBusy = false
             }

@@ -246,14 +246,17 @@ class AndroidTvRemoteClient(context: Context) {
     }
 
     suspend fun finishPairing(challenge: PairingChallenge, code: String): SavedAndroidTv {
-        try {
-            val clientCertificate = clientCertificate()
-            val clientKey = clientCertificate.publicKey as? RSAPublicKey
-                ?: error("The phone's pairing key is not RSA.")
-            val serverKey = challenge.serverCertificate.publicKey as? RSAPublicKey
-                ?: error("The TV's pairing key is not RSA.")
-            val secret = AndroidTvPairingSecret.calculate(code, clientKey, serverKey)
+        val clientCertificate = clientCertificate()
+        val clientKey = clientCertificate.publicKey as? RSAPublicKey
+            ?: error("The phone's pairing key is not RSA.")
+        val serverKey = challenge.serverCertificate.publicKey as? RSAPublicKey
+            ?: error("The TV's pairing key is not RSA.")
 
+        // Validate locally before consuming the live pairing socket. A mistyped check
+        // byte can then be corrected without restarting the TV's pairing flow.
+        val secret = AndroidTvPairingSecret.calculate(code, clientKey, serverKey)
+
+        try {
             sendPairingMessage(challenge.output, 40, ProtoWriter().bytes(1, secret).toByteArray())
             expectPairingMessage(challenge.input, 41)
 
@@ -445,6 +448,7 @@ class AndroidTvRemoteSession internal constructor(
 
     internal fun start() {
         Thread({
+            var disconnectReason = "The TV disconnected."
             try {
                 val input = DataInputStream(socket.inputStream)
                 socket.soTimeout = 15_000
@@ -456,11 +460,15 @@ class AndroidTvRemoteSession internal constructor(
                     } ?: break
                     handleRemoteMessage(bytes)
                 }
-                if (!closed) postStatus("TV disconnected. Tap Connect to retry.")
             } catch (failure: Throwable) {
-                if (!closed) postStatus(failure.message ?: "The TV connection was lost.")
+                if (!closed) {
+                    disconnectReason = failure.message ?: "The TV connection was lost."
+                }
             } finally {
                 ready = false
+                if (!closed) {
+                    postStatus("$disconnectReason Connection disconnected. Tap Connect to retry.")
+                }
                 runCatching { socket.close() }
             }
         }, "OneRemote-AndroidTV").apply {
