@@ -32,6 +32,10 @@ sealed interface IrProtocolCommand {
         override val protocolId = IrProtocolId.NEC
     }
 
+    /**
+     * Flipper NECext stores independent 16-bit address and 16-bit command
+     * fields (not the legacy 8-bit NEC inverse-byte layout).
+     */
     data class NecExtended(
         val address: Int,
         val command: Int
