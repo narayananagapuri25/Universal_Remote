@@ -78,7 +78,7 @@ class IrRemoteProfileValidatorTest {
         val button = IrRemoteButton(
             id = "power",
             label = "Power",
-            command = IrProtocolCommand.Nec(address = 1, command = 2)
+            command = IrCommandSpec.Protocol(IrProtocolCommand.Nec(address = 1, command = 2))
         )
         val profile = IrRemoteProfile(
             profileId = "test-tv",
