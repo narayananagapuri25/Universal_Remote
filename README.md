@@ -33,11 +33,11 @@ The `app/` module is the first native Android implementation foundation:
 - Minimum Android API 26; compile SDK API 37.2; target SDK API 36
 - Compose Material 3 UI shell with Devices, Discover and Settings
 - Room-backed local saved-device persistence
-- First-release category and command-safety domain types
+- First-release category and command-safety domain types\n- Built-in IR capability inspection, carrier-range validation and guarded transmit adapter with unit tests
 - Smart TV/set-top-box volume-routing policy with unit tests
 - GitHub Actions verification: unit tests, Android Lint and debug APK assembly
 
-The current UI intentionally does not claim device discovery, pairing or remote commands are implemented. The Discover screen states this honestly. The first build uses a provisional application ID (`dev.localremote.app`) pending product-name clearance; it must not be published under this ID before identity review.
+The current UI does not claim LAN/Bluetooth discovery, pairing, model-specific device profiles or appliance remote controls are implemented. The Discover screen reports built-in IR capability without transmitting a signal during setup. The first build uses a provisional application ID (`dev.localremote.app`) pending product-name clearance; it must not be published under this ID before identity review.
 
 ## Local build
 
