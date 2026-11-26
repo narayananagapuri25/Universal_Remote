@@ -8,11 +8,14 @@ import dev.localremote.app.connectivity.infrared.IrTransmitter
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class BuiltInIrTransmitter(
     private val driver: ConsumerIrDriver,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : IrTransmitter {
+    private val transmitMutex = Mutex()
 
     override suspend fun inspect(): IrHardwareStatus = withContext(ioDispatcher) {
         try {
@@ -55,40 +58,42 @@ class BuiltInIrTransmitter(
                 return@withContext IrTransmitResult.Rejected(it)
             }
 
-            try {
-                if (!driver.hasEmitter()) {
-                    return@withContext IrTransmitResult.NoTransmitter
-                }
+            transmitMutex.withLock {
+                try {
+                    if (!driver.hasEmitter()) {
+                        return@withLock IrTransmitResult.NoTransmitter
+                    }
 
-                val ranges = driver.getCarrierFrequencies().orEmpty()
-                if (ranges.isEmpty()) {
-                    return@withContext IrTransmitResult.Failed(
-                        "Android did not report supported IR carrier frequencies; transmission was blocked."
+                    val ranges = driver.getCarrierFrequencies().orEmpty()
+                    if (ranges.isEmpty()) {
+                        return@withLock IrTransmitResult.Failed(
+                            "Android did not report supported IR carrier frequencies; transmission was blocked."
+                        )
+                    }
+
+                    if (ranges.none { it.contains(signal.carrierFrequencyHz) }) {
+                        return@withLock IrTransmitResult.UnsupportedFrequency(
+                            requestedHz = signal.carrierFrequencyHz,
+                            supportedRanges = ranges
+                        )
+                    }
+
+                    driver.transmit(
+                        carrierFrequencyHz = signal.carrierFrequencyHz,
+                        patternMicros = signal.patternMicros.toIntArray()
+                    )
+                    IrTransmitResult.Sent(signal.totalDurationMicros)
+                } catch (security: SecurityException) {
+                    IrTransmitResult.Failed("Android denied access to the consumer IR service.")
+                } catch (failure: IllegalArgumentException) {
+                    IrTransmitResult.Rejected(
+                        failure.message ?: "Android rejected the IR signal parameters."
+                    )
+                } catch (failure: RuntimeException) {
+                    IrTransmitResult.Failed(
+                        failure.message ?: "The consumer IR transmitter failed."
                     )
                 }
-
-                if (ranges.none { it.contains(signal.carrierFrequencyHz) }) {
-                    return@withContext IrTransmitResult.UnsupportedFrequency(
-                        requestedHz = signal.carrierFrequencyHz,
-                        supportedRanges = ranges
-                    )
-                }
-
-                driver.transmit(
-                    carrierFrequencyHz = signal.carrierFrequencyHz,
-                    patternMicros = signal.patternMicros.toIntArray()
-                )
-                IrTransmitResult.Sent(signal.totalDurationMicros)
-            } catch (security: SecurityException) {
-                IrTransmitResult.Failed("Android denied access to the consumer IR service.")
-            } catch (failure: IllegalArgumentException) {
-                IrTransmitResult.Rejected(
-                    failure.message ?: "Android rejected the IR signal parameters."
-                )
-            } catch (failure: RuntimeException) {
-                IrTransmitResult.Failed(
-                    failure.message ?: "The consumer IR transmitter failed."
-                )
             }
         }
 }
