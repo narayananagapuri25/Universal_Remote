@@ -167,7 +167,7 @@ The first implementation now includes `AndroidConsumerIrDriver` and `BuiltInIrTr
 
 ### 7.1.1 Implemented protocol encoder and profile layer
 
-The current branch independently implements typed NEC, extended NEC, Samsung32 and Sony SIRC12/15/20 encoders. It also provides immutable signal objects, a command dispatcher and model-specific IR profile/button data structures. Profile evidence is tracked per button, not per brand. Protocol-vector and profile-validation tests are required in CI. The encoder parameters do not constitute a brand/model code catalogue; no model-specific code set is bundled by this layer. See [IR Protocol Implementation and Data Policy](PROTOCOL_IMPLEMENTATION.md) for the protocol parameters, evidence rules, source references and licence policy.
+The current branch independently implements typed NEC, extended NEC, Samsung32 and Sony SIRC12/15/20 encoders. It also provides immutable signal objects, a command dispatcher and model-specific IR profile/button data structures. A profile button can carry either a typed protocol command or a raw waveform; raw signals are validated before dispatch. Profile evidence is tracked per button, not per brand. Protocol-vector and profile-validation tests are required in CI. The encoder parameters do not constitute a brand/model code catalogue; no model-specific code set is bundled by this layer. IR receiver capture and user-facing profile import/export remain separate unfinished components. See [IR Protocol Implementation and Data Policy](PROTOCOL_IMPLEMENTATION.md) for the protocol parameters, evidence rules, source references and licence policy.
 
 ### 7.2 External IR
 
