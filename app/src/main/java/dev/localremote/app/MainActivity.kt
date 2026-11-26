@@ -55,6 +55,7 @@ import dev.localremote.app.connectivity.infrared.protocol.IrRemoteButton
 import dev.localremote.app.core.model.DeviceCategory
 import dev.localremote.app.data.local.SavedDeviceEntity
 import dev.localremote.app.data.local.DaikinAcProfileDao
+import dev.localremote.app.data.local.DaikinAcProfileEntity
 import dev.localremote.app.data.local.SavedIrProfileRepository
 import dev.localremote.app.platform.infrared.AndroidConsumerIrDriver
 import dev.localremote.app.platform.infrared.BuiltInIrTransmitter
@@ -138,10 +139,13 @@ private fun OneRemoteApp(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val savedDaikinProfiles by daikinProfileDao.observeAll()
+        .collectAsStateWithLifecycle(initialValue = emptyList())
 
     var destination by rememberSaveable { mutableStateOf(Destination.DEVICES) }
     var openProfileId by rememberSaveable { mutableStateOf<String?>(null) }
     var openDaikinAc by rememberSaveable { mutableStateOf(false) }
+    var selectedDaikinProfileId by rememberSaveable { mutableStateOf<String?>(null) }
     var importState by remember { mutableStateOf<ImportState>(ImportState.Idle) }
     var importDisplayName by rememberSaveable { mutableStateOf("Imported remote") }
     var importBrand by rememberSaveable { mutableStateOf("Custom") }
@@ -263,6 +267,7 @@ private fun OneRemoteApp(
                         OutlinedButton(onClick = {
                             openProfileId = null
                             openDaikinAc = false
+                            selectedDaikinProfileId = null
                         }) {
                             Text("Back")
                         }
@@ -295,7 +300,8 @@ private fun OneRemoteApp(
                 DaikinAcRemoteScreen(
                     irHardware = irHardware,
                     dispatcher = daikinDispatcher,
-                    profileDao = daikinProfileDao
+                    profileDao = daikinProfileDao,
+                    initialProfileId = selectedDaikinProfileId
                 )
             } else if (openProfileId != null) {
                 when (val remote = currentRemoteState) {
@@ -328,11 +334,23 @@ private fun OneRemoteApp(
                 when (destination) {
                     Destination.DEVICES -> DevicesScreen(
                         devices = savedDevices,
-                        onOpenRemote = { profileId -> openProfileId = profileId }
+                        daikinProfiles = savedDaikinProfiles,
+                        onOpenRemote = { profileId -> openProfileId = profileId },
+                        onOpenDaikinAc = {
+                            selectedDaikinProfileId = null
+                            openDaikinAc = true
+                        },
+                        onOpenDaikinProfile = { profileId ->
+                            selectedDaikinProfileId = profileId
+                            openDaikinAc = true
+                        }
                     )
                     Destination.DISCOVER -> DiscoverScreen(
                         irHardware = irHardware,
-                        onOpenDaikinAc = { openDaikinAc = true },
+                        onOpenDaikinAc = {
+                            selectedDaikinProfileId = null
+                            openDaikinAc = true
+                        },
                         importDisplayName = importDisplayName,
                         onDisplayNameChange = { importDisplayName = it },
                         importBrand = importBrand,
@@ -383,54 +401,51 @@ private fun OneRemoteApp(
 @Composable
 private fun DevicesScreen(
     devices: List<SavedDeviceEntity>,
-    onOpenRemote: (String) -> Unit
+    daikinProfiles: List<DaikinAcProfileEntity>,
+    onOpenRemote: (String) -> Unit,
+    onOpenDaikinAc: () -> Unit,
+    onOpenDaikinProfile: (String) -> Unit
 ) {
-    if (devices.isEmpty()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 28.dp, vertical = 36.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item {
             Text(
-                "⌁",
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                "Your remotes will appear here",
-                style = MaterialTheme.typography.titleLarge,
+                "Your devices",
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold
             )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Saved devices stay on this phone. Configured remotes work offline.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(22.dp))
-            Text(
-                "Import a compatible .ir remote from Discover to create your first saved remote.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
-    } else {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+
+        if (devices.isEmpty()) {
             item {
-                Text(
-                    "Your devices",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "Your saved remotes will appear here",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            "Configured remotes stay on this phone and work offline. Add an imported IR remote from Discover.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
+        } else {
             items(devices, key = { it.id }) { device ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -461,6 +476,76 @@ private fun DevicesScreen(
                             Spacer(Modifier.height(10.dp))
                             Button(onClick = { onOpenRemote(device.profileId) }) {
                                 Text("Open remote")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Air conditioner profiles",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                "Saved settings stay offline. Compatibility remains unverified until your exact appliance and remote have been physically tested.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = onOpenDaikinAc,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Create or configure AC profile")
+            }
+        }
+
+        if (daikinProfiles.isEmpty()) {
+            item {
+                Text(
+                    "No saved AC profiles yet.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            items(daikinProfiles, key = { "daikin:${it.profileId}" }) { profile ->
+                val setpoint = if (profile.mode == "DRY") {
+                    "Dry · no setpoint"
+                } else {
+                    "${profile.temperatureCelsius} °C"
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            profile.displayName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            "${profile.mode.lowercase().replaceFirstChar { it.uppercase() }} · $setpoint · ${profile.transportVariant.replace('_', ' ').lowercase()}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            "Compatibility unverified · Saved on this phone",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { onOpenDaikinProfile(profile.profileId) }) {
+                                Text("Open profile")
                             }
                         }
                     }
