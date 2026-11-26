@@ -82,7 +82,7 @@ class BuiltInIrTransmitter(
                         carrierFrequencyHz = signal.carrierFrequencyHz,
                         patternMicros = signal.patternMicros.toIntArray()
                     )
-                    IrTransmitResult.Sent(signal.totalDurationMicros)
+                    IrTransmitResult.Sent(signal.totalDurationMicros, dutyCycleApplied = false)
                 } catch (security: SecurityException) {
                     IrTransmitResult.Failed("Android denied access to the consumer IR service.")
                 } catch (failure: IllegalArgumentException) {
