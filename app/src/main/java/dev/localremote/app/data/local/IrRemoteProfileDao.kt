@@ -2,6 +2,7 @@ package dev.localremote.app.data.local
 
 import androidx.room.Dao
 import androidx.room.Embedded
+import androidx.room.Upsert
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
@@ -33,6 +34,36 @@ interface IrRemoteProfileDao {
 
     @Upsert
     suspend fun upsertSavedDevice(device: SavedDeviceEntity)
+
+    @Query(
+        """
+        SELECT * FROM ir_remote_control_mappings
+        WHERE profileId = :profileId
+        ORDER BY role ASC
+        """
+    )
+    fun observeControlMappings(profileId: String): Flow<List<IrRemoteControlMappingEntity>>
+
+    @Upsert
+    suspend fun upsertControlMappings(mappings: List<IrRemoteControlMappingEntity>)
+
+    @Query("DELETE FROM ir_remote_control_mappings WHERE profileId = :profileId")
+    suspend fun deleteControlMappings(profileId: String)
+
+    @Transaction
+    suspend fun replaceControlMappings(
+        profileId: String,
+        mappings: List<IrRemoteControlMappingEntity>
+    ) {
+        require(mappings.all { it.profileId == profileId }) {
+            "All control mappings must belong to the same remote profile."
+        }
+        require(mappings.map { it.role }.distinct().size == mappings.size) {
+            "Each control role can be assigned only once."
+        }
+        deleteControlMappings(profileId)
+        if (mappings.isNotEmpty()) upsertControlMappings(mappings)
+    }
 
     @Query("DELETE FROM saved_devices WHERE id = :deviceId")
     suspend fun deleteSavedDevice(deviceId: String)
