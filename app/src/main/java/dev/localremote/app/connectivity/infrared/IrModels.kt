@@ -49,9 +49,6 @@ object IrSignalValidator {
         if (signal.patternMicros.size < 2) {
             return "An IR pattern must contain at least one mark and one space."
         }
-        if (signal.patternMicros.size % 2 != 0) {
-            return "IR pattern must contain alternating mark/space pairs."
-        }
         if (signal.patternMicros.size > MAX_PATTERN_SEGMENTS) {
             return "IR pattern contains too many segments."
         }
