@@ -6,7 +6,7 @@ import dev.localremote.app.connectivity.infrared.IrSignal
  * Encodes documented protocol fields into Android's alternating mark/space
  * microsecond representation. No manufacturer code tables are embedded here.
  *
- * Timings should be validated against the supplied original-remote capture
+ * NECext uses Flipper's independent 16-bit address and 16-bit command payload;\n * it does not use the legacy NEC inverse-byte arrangement.\n *\n * Timings should be validated against the supplied original-remote capture
  * before a model profile is labelled protocol verified or physically tested.
  */
 object IrProtocolEncoder {
@@ -34,26 +34,18 @@ object IrProtocolEncoder {
         command: Int,
         extendedAddress: Boolean
     ): IrSignal {
-        requireByte(command, "NEC command")
-        if (extendedAddress) {
-            requireRange(address, 0x0000, 0xFFFF, "NEC extended address")
-            val low = address and 0xFF
-            val high = (address ushr 8) and 0xFF
-            require(high != (low xor 0xFF)) {
-                "NEC extended address cannot be an 8-bit address followed by its inverse."
-            }
-        } else {
-            requireByte(address, "NEC address")
-        }
-
         val bytes = if (extendedAddress) {
+            requireRange(address, 0x0000, 0xFFFF, "NEC extended address")
+            requireRange(command, 0x0000, 0xFFFF, "NEC extended command")
             listOf(
                 address and 0xFF,
                 (address ushr 8) and 0xFF,
-                command,
-                command xor 0xFF
+                command and 0xFF,
+                (command ushr 8) and 0xFF
             )
         } else {
+            requireByte(address, "NEC address")
+            requireByte(command, "NEC command")
             listOf(
                 address,
                 address xor 0xFF,
