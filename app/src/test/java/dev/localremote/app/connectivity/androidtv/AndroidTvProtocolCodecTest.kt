@@ -55,6 +55,31 @@ class AndroidTvProtocolCodecTest {
         }
     }
 
+    @Test
+    fun textInputEncoderBuildsNestedBatchEditAndCountsUnicodeCodePoints() {
+        val encoded = AndroidTvTextInputEncoder.encode(7, 12, "A😀")
+        val batch = ProtoReader.parse(encoded)
+        assertEquals(7L, ProtoReader.firstNumber(batch, 1))
+        assertEquals(12L, ProtoReader.firstNumber(batch, 2))
+
+        val edit = ProtoReader.parse(checkNotNull(ProtoReader.firstBytes(batch, 3)))
+        assertEquals(1L, ProtoReader.firstNumber(edit, 1))
+        val textField = ProtoReader.parse(checkNotNull(ProtoReader.firstBytes(edit, 2)))
+        assertEquals(2L, ProtoReader.firstNumber(textField, 1))
+        assertEquals(2L, ProtoReader.firstNumber(textField, 2))
+        assertArrayEquals("A😀".toByteArray(), ProtoReader.firstBytes(textField, 3))
+    }
+
+    @Test
+    fun textInputEncoderRejectsEmptyOrOverlongText() {
+        assertThrows(IllegalArgumentException::class.java) {
+            AndroidTvTextInputEncoder.encode(0, 0, "")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            AndroidTvTextInputEncoder.encode(0, 0, "x".repeat(4_097))
+        }
+    }
+
     private fun publicKeyFixtures(): Pair<RSAPublicKey, RSAPublicKey> {
         val factory = KeyFactory.getInstance("RSA")
         val exponent = BigInteger.valueOf(65537)

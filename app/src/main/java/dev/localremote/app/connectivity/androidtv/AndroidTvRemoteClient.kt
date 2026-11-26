@@ -168,6 +168,35 @@ internal object AndroidTvPairingSecret {
         value.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 }
 
+/** Builds the RemoteImeBatchEdit payload used for text insertion on a focused TV field. */
+internal object AndroidTvTextInputEncoder {
+    fun encode(imeCounter: Int, fieldCounter: Int, text: String): ByteArray {
+        require(text.isNotEmpty()) { "Enter text before sending it to the TV." }
+        require(text.length <= MAX_TEXT_LENGTH) { "Text is too long to send to the TV." }
+        require(imeCounter >= 0 && fieldCounter >= 0) { "Invalid TV text-field counters." }
+
+        // The protocol offsets are character positions, not UTF-8 byte lengths.
+        val cursor = text.codePointCount(0, text.length)
+        val textField = ProtoWriter()
+            .varint(1, cursor.toLong())
+            .varint(2, cursor.toLong())
+            .string(3, text)
+            .toByteArray()
+        val editInfo = ProtoWriter()
+            .varint(1, 1)
+            .bytes(2, textField)
+            .toByteArray()
+
+        return ProtoWriter()
+            .varint(1, imeCounter.toLong())
+            .varint(2, fieldCounter.toLong())
+            .bytes(3, editInfo)
+            .toByteArray()
+    }
+
+    private const val MAX_TEXT_LENGTH = 4_096
+}
+
 data class SavedAndroidTv(
     val name: String,
     val host: String,
@@ -277,7 +306,8 @@ class AndroidTvRemoteClient(context: Context) {
         saved: SavedAndroidTv,
         onStatus: (String) -> Unit,
         onPowerState: (Boolean) -> Unit,
-        onVolume: (Int, Int, Boolean) -> Unit
+        onVolume: (Int, Int, Boolean) -> Unit,
+        onTextInputState: (Boolean, String) -> Unit
     ): AndroidTvRemoteSession {
         val identity = ensureClientIdentity()
         val socket = createTlsSocket(
@@ -286,7 +316,7 @@ class AndroidTvRemoteClient(context: Context) {
             identity,
             saved.certificateFingerprint
         )
-        return AndroidTvRemoteSession(socket, onStatus, onPowerState, onVolume).also {
+        return AndroidTvRemoteSession(socket, onStatus, onPowerState, onVolume, onTextInputState).also {
             it.start()
         }
     }
@@ -437,11 +467,17 @@ class AndroidTvRemoteSession internal constructor(
     private val socket: SSLSocket,
     private val onStatus: (String) -> Unit,
     private val onPowerState: (Boolean) -> Unit,
-    private val onVolume: (Int, Int, Boolean) -> Unit
+    private val onVolume: (Int, Int, Boolean) -> Unit,
+    private val onTextInputState: (Boolean, String) -> Unit
 ) : AutoCloseable {
     @Volatile private var ready = false
     @Volatile private var closed = false
     @Volatile private var negotiatedFeatures = 0
+    private val imeLock = Any()
+    private var imeCounter = 0
+    private var imeFieldCounter = 0
+    private var hasImeFieldCounter = false
+    private var textInputLabel = "TV text input"
     private val output = DataOutputStream(socket.outputStream)
     private val writeLock = Any()
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -482,6 +518,20 @@ class AndroidTvRemoteSession internal constructor(
         require(keyCode in 1..304) { "Unsupported Android TV key code." }
         val keyInject = ProtoWriter().varint(1, keyCode.toLong()).varint(2, 3).toByteArray()
         sendRemoteMessage(10, keyInject)
+    }
+
+    fun sendText(text: String) {
+        check(!closed && ready) { "The TV remote session is not ready." }
+        check(negotiatedFeatures and FEATURE_IME != 0) {
+            "This TV remote service does not advertise text-input support."
+        }
+        val counters = synchronized(imeLock) {
+            check(hasImeFieldCounter) {
+                "Open a text field on the TV first, such as Search, then try sending text."
+            }
+            imeCounter to imeFieldCounter
+        }
+        sendRemoteMessage(21, AndroidTvTextInputEncoder.encode(counters.first, counters.second, text))
     }
 
     override fun close() {
@@ -541,6 +591,46 @@ class AndroidTvRemoteSession internal constructor(
             return
         }
 
+        val imeKeyInject = ProtoReader.firstBytes(fields, 20)
+        if (imeKeyInject != null) {
+            val imeFields = ProtoReader.parse(imeKeyInject)
+            val appInfoBytes = ProtoReader.firstBytes(imeFields, 1)
+            val fieldStatusBytes = ProtoReader.firstBytes(imeFields, 2)
+            if (appInfoBytes != null && fieldStatusBytes != null) {
+                val appInfo = ProtoReader.parse(appInfoBytes)
+                val fieldStatus = ProtoReader.parse(fieldStatusBytes)
+                val imeValue = ProtoReader.firstNumber(appInfo, 1)?.toInt() ?: 0
+                val fieldValue = ProtoReader.firstNumber(fieldStatus, 1)?.toInt()
+                val label = ProtoReader.firstBytes(fieldStatus, 6)
+                    ?.toString(Charsets.UTF_8)?.take(80)?.takeIf { it.isNotBlank() }
+                updateImeState(imeValue, fieldValue, label)
+            }
+            return
+        }
+
+        val imeShowRequest = ProtoReader.firstBytes(fields, 22)
+        if (imeShowRequest != null) {
+            val requestFields = ProtoReader.parse(imeShowRequest)
+            val fieldStatusBytes = ProtoReader.firstBytes(requestFields, 2)
+            if (fieldStatusBytes != null) {
+                val fieldStatus = ProtoReader.parse(fieldStatusBytes)
+                val fieldValue = ProtoReader.firstNumber(fieldStatus, 1)?.toInt()
+                val label = ProtoReader.firstBytes(fieldStatus, 6)
+                    ?.toString(Charsets.UTF_8)?.take(80)?.takeIf { it.isNotBlank() }
+                updateImeState(fieldCounter = fieldValue, label = label)
+            }
+            return
+        }
+
+        val imeBatchEdit = ProtoReader.firstBytes(fields, 21)
+        if (imeBatchEdit != null) {
+            val batchFields = ProtoReader.parse(imeBatchEdit)
+            val imeValue = ProtoReader.firstNumber(batchFields, 1)?.toInt()
+            val fieldValue = ProtoReader.firstNumber(batchFields, 2)?.toInt()
+            updateImeState(imeValue, fieldValue, null)
+            return
+        }
+
         val volume = ProtoReader.firstBytes(fields, 50)
         if (volume != null) {
             val values = ProtoReader.parse(volume)
@@ -564,6 +654,26 @@ class AndroidTvRemoteSession internal constructor(
         }
     }
 
+    private fun updateImeState(
+        imeValue: Int? = null,
+        fieldCounter: Int? = null,
+        label: String? = null
+    ) {
+        val available: Boolean
+        val currentLabel: String
+        synchronized(imeLock) {
+            if (imeValue != null) imeCounter = imeValue
+            if (fieldCounter != null) {
+                imeFieldCounter = fieldCounter
+                hasImeFieldCounter = true
+            }
+            if (label != null) textInputLabel = label
+            available = hasImeFieldCounter && negotiatedFeatures and FEATURE_IME != 0
+            currentLabel = textInputLabel
+        }
+        mainHandler.post { onTextInputState(available, currentLabel) }
+    }
+
     private fun postStatus(message: String) {
         mainHandler.post { onStatus(message) }
     }
@@ -571,10 +681,11 @@ class AndroidTvRemoteSession internal constructor(
     private companion object {
         const val FEATURE_PING = 1
         const val FEATURE_KEY = 2
+        const val FEATURE_IME = 4
         const val FEATURE_POWER = 32
         const val FEATURE_VOLUME = 64
         const val FEATURE_KEY_PING_POWER_VOLUME =
-            FEATURE_PING or FEATURE_KEY or FEATURE_POWER or FEATURE_VOLUME
+            FEATURE_PING or FEATURE_KEY or FEATURE_IME or FEATURE_POWER or FEATURE_VOLUME
     }
 }
 

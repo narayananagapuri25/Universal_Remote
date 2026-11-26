@@ -89,6 +89,7 @@ fun RealmeTvRemoteScreen() {
             message.contains("certificate changed", ignoreCase = true)
         ) {
             connected = false
+            textInputAvailable = false
         }
     }
 
@@ -96,6 +97,8 @@ fun RealmeTvRemoteScreen() {
         if (connecting) return
         connecting = true
         connected = false
+        textInputAvailable = false
+        textInputHint = "TV text input"
         status = "Connecting securely to ${tv.host}…"
         scope.launch {
             try {
