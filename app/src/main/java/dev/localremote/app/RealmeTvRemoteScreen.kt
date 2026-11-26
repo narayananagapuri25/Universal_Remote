@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
@@ -24,6 +27,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -474,88 +478,83 @@ fun AndroidTvRemoteScreen() {
 
         if (selectedMode == "Remote") {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Quick controls", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TvKeyButton("Power", 26, connected, ::sendKey, Modifier.weight(1f))
-                        TvKeyButton("TV Power", 177, connected, ::sendKey, Modifier.weight(1f))
-                        TvKeyButton("Input", 178, connected, ::sendKey, Modifier.weight(1f))
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TvKeyButton("Back", 4, connected, ::sendKey, Modifier.weight(1f))
-                        TvKeyButton("Home", 3, connected, ::sendKey, Modifier.weight(1f))
-                        TvKeyButton("Menu", 82, connected, ::sendKey, Modifier.weight(1f))
-                    }
-                }
-            }
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text("Favourite apps", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            AndroidTvAppShortcut.entries.forEach { shortcut ->
-                                OutlinedButton(
-                                    onClick = { launchApp(shortcut) },
-                                    enabled = connected && appLinksAvailable,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(shortcut.label, style = MaterialTheme.typography.labelMedium)
-                                }
-                            }
+                Card(modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(18.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Text("Navigation", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(if (connected) "READY" else "OFFLINE", style = MaterialTheme.typography.labelSmall,
+                                color = if (connected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Text(
-                            when {
-                                !connected -> "Connect to your TV to use app shortcuts."
-                                !appLinksAvailable -> "This TV does not advertise app-link launch support."
-                                else -> "Opens the matching installed TV app, when it handles the selected link."
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text("Navigation", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        TvKeyButton("▲", 19, connected, ::sendKey, Modifier.fillMaxWidth(0.32f))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TvKeyButton("◀", 21, connected, ::sendKey, Modifier.weight(1f))
-                            TvKeyButton("OK", 23, connected, ::sendKey, Modifier.weight(1.2f))
-                            TvKeyButton("▶", 22, connected, ::sendKey, Modifier.weight(1f))
+                        TvDpadButton("↑", 19, connected, ::sendKey)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically) {
+                            TvDpadButton("←", 21, connected, ::sendKey)
+                            Spacer(Modifier.size(12.dp))
+                            TvDpadButton("OK", 23, connected, ::sendKey, center = true)
+                            Spacer(Modifier.size(12.dp))
+                            TvDpadButton("→", 22, connected, ::sendKey)
                         }
-                        TvKeyButton("▼", 20, connected, ::sendKey, Modifier.fillMaxWidth(0.32f))
-                        Text(
-                            "Tap a direction, then OK to select",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        TvDpadButton("↓", 20, connected, ::sendKey)
+                        Text("Swipe on the Touchpad tab for gesture navigation", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TvKeyButton("Vol −", 25, connected, ::sendKey, Modifier.weight(1f))
-                    TvKeyButton("Mute", 164, connected, ::sendKey, Modifier.weight(1f))
-                    TvKeyButton("Vol +", 24, connected, ::sendKey, Modifier.weight(1f))
+                    TvKeyButton("Back", 4, connected, ::sendKey, Modifier.weight(1f))
+                    TvKeyButton("Home", 3, connected, ::sendKey, Modifier.weight(1f))
+                    TvKeyButton("Input", 178, connected, ::sendKey, Modifier.weight(1f))
+                }
+            }
+            item {
+                Card(modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Volume", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TvKeyButton("−", 25, connected, ::sendKey, Modifier.weight(1f))
+                            TvKeyButton("Mute", 164, connected, ::sendKey, Modifier.weight(1f))
+                            TvKeyButton("+", 24, connected, ::sendKey, Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+            item {
+                Card(modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Quick launch", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            AndroidTvAppShortcut.entries.forEach { shortcut ->
+                                OutlinedButton(onClick = { launchApp(shortcut) }, enabled = connected && appLinksAvailable,
+                                    modifier = Modifier.weight(1f)) {
+                                    Text(shortcut.label, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+                        Text(when {
+                            !connected -> "Connect to your TV to use shortcuts."
+                            !appLinksAvailable -> "This TV does not advertise app-link launch support."
+                            else -> "Launch requests depend on an installed TV app handling the link."
+                        }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            item {
+                Card(modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Playback", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TvKeyButton("Previous", 89, connected, ::sendKey, Modifier.weight(1f))
+                            TvKeyButton("Play / pause", 85, connected, ::sendKey, Modifier.weight(1f))
+                            TvKeyButton("Next", 90, connected, ::sendKey, Modifier.weight(1f))
+                        }
+                    }
                 }
             }
         }
@@ -815,6 +814,22 @@ private fun friendlyTvError(message: String): String {
 }
 
 @Composable
+private fun TvDpadButton(
+    label: String,
+    keyCode: Int,
+    connected: Boolean,
+    onSend: (Int) -> Unit,
+    center: Boolean = false
+) {
+    FilledTonalButton(onClick = { onSend(keyCode) }, enabled = connected,
+        modifier = Modifier.size(if (center) 74.dp else 62.dp), shape = CircleShape,
+        contentPadding = PaddingValues(0.dp)) {
+        Text(label, style = if (center) MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
 private fun TvKeyButton(
     label: String,
     keyCode: Int,
@@ -822,11 +837,7 @@ private fun TvKeyButton(
     onSend: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Button(
-        onClick = { onSend(keyCode) },
-        enabled = connected,
-        modifier = modifier.height(52.dp)
-    ) {
+    FilledTonalButton(onClick = { onSend(keyCode) }, enabled = connected, modifier = modifier.height(50.dp)) {
         Text(label, style = MaterialTheme.typography.labelLarge)
     }
 }

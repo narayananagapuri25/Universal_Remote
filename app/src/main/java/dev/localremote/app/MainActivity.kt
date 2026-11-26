@@ -431,160 +431,108 @@ private fun DevicesScreen(
     onOpenDaikinProfile: (String) -> Unit
 ) {
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Text(
-                "Your devices",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text("Your devices", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text("All your remotes, together in one place.", style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
-
+        item {
+            Card(modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Icon(painter = painterResource(R.drawable.ic_nav_tv), contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.height(34.dp))
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("Add a remote", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text("Connect a TV over Wi-Fi or add an infrared profile.", style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Button(onClick = onOpenTvRemote, modifier = Modifier.weight(1f)) { Text("Connect TV") }
+                        OutlinedButton(onClick = onDiscover, modifier = Modifier.weight(1f)) { Text("Add IR remote") }
+                    }
+                }
+            }
+        }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()) {
+                Text("Saved remotes", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("${devices.size}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         if (devices.isEmpty()) {
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            "Your saved remotes will appear here",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            "Set up a TV over Wi-Fi or import an IR remote. Your saved profiles stay on this phone and work offline.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Button(
-                                onClick = onOpenTvRemote,
-                                modifier = Modifier.weight(1f)
-                            ) { Text("Set up a TV") }
-                            OutlinedButton(
-                                onClick = onDiscover,
-                                modifier = Modifier.weight(1f)
-                            ) { Text("Import IR remote") }
-                        }
+                Card(modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp, horizontal = 18.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(painter = painterResource(R.drawable.ic_nav_devices), contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.height(38.dp))
+                        Text("No saved remotes yet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("Your saved IR profiles will appear here. TV pairings are managed from the TV tab.",
+                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
         } else {
             items(devices, key = { it.id }) { device ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    )
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(
-                            device.displayName,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            listOfNotNull(device.manufacturer, device.model)
-                                .joinToString(" · ")
-                                .ifBlank { device.category },
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "Saved profile · ${device.connectionState.replace('_', ' ').lowercase()}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (device.profileId != null) {
-                            Spacer(Modifier.height(10.dp))
-                            Button(onClick = { onOpenRemote(device.profileId) }) {
-                                Text("Open remote")
-                            }
+                Card(modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Icon(painter = painterResource(R.drawable.ic_nav_devices), contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.height(32.dp))
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(device.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(listOfNotNull(device.manufacturer, device.model).joinToString(" · ").ifBlank { device.category },
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Saved offline · ${device.connectionState.replace('_', ' ').lowercase()}",
+                                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
                         }
+                        if (device.profileId != null) OutlinedButton(onClick = { onOpenRemote(device.profileId) }) { Text("Open") }
                     }
                 }
             }
         }
-
         item {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Air conditioner profiles",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                "Saved settings stay offline. Compatibility remains unverified until your exact appliance and remote have been physically tested.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = onOpenDaikinAc,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Create or configure AC profile")
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text("Air conditioner", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("Save supported AC settings on this phone. Compatibility is unverified until tested with the actual unit.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedButton(onClick = onOpenDaikinAc, modifier = Modifier.fillMaxWidth()) {
+                    Text("Configure experimental Daikin remote")
+                }
             }
         }
-
         if (daikinProfiles.isEmpty()) {
-            item {
-                Text(
-                    "No saved AC profiles yet.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            item { Text("No AC profiles saved yet.", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
             items(daikinProfiles, key = { "daikin:${it.profileId}" }) { profile ->
-                val setpoint = if (profile.mode == "DRY") {
-                    "Dry · no setpoint"
-                } else {
-                    "${profile.temperatureCelsius} °C"
-                }
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            profile.displayName,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            "${profile.mode.lowercase().replaceFirstChar { it.uppercase() }} · $setpoint · ${profile.transportVariant.replace('_', ' ').lowercase()}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            "Compatibility unverified · Saved on this phone",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { onOpenDaikinProfile(profile.profileId) }) {
-                                Text("Open profile")
-                            }
+                val setpoint = if (profile.mode == "DRY") "Dry · no setpoint" else "${profile.temperatureCelsius} °C"
+                Card(modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Icon(painter = painterResource(R.drawable.ic_nav_devices), contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.height(28.dp))
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(profile.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("${profile.mode.lowercase().replaceFirstChar { it.uppercase() }} · $setpoint",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Compatibility unverified", style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.tertiary)
                         }
+                        OutlinedButton(onClick = { onOpenDaikinProfile(profile.profileId) }) { Text("Open") }
                     }
                 }
             }
@@ -610,216 +558,120 @@ private fun DiscoverScreen(
     onSaveProfile: (IrRemoteProfile) -> Unit,
     onClearImport: () -> Unit
 ) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
+    LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
-            Text(
-                "Discover and add devices",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                "Find compatible Android TVs in the TV Remote tab, or import a Flipper Zero .ir profile for an IR-controlled device. Bluetooth discovery is not yet supported.",
-                style = MaterialTheme.typography.bodyLarge
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text("Add a device", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text("Import an infrared remote profile or check your phone's IR hardware.",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                )
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(
-                        "Built-in IR transmitter",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    when {
-                        irHardware == null -> Text("Checking phone hardware…")
-                        !irHardware.transmitterAvailable -> Text(
-                            irHardware.diagnostic ?: "No built-in IR transmitter is available."
-                        )
-                        irHardware.supportedCarrierRanges.isEmpty() -> Text(
-                            irHardware.diagnostic
-                                ?: "IR hardware detected, but carrier-frequency support could not be verified."
-                        )
-                        else -> {
-                            Text("Transmitter detected")
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                irHardware.supportedCarrierRanges.joinToString { range ->
-                                    "${range.minHz / 1_000f}–${range.maxHz / 1_000f} kHz"
-                                },
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+            Card(modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(painter = painterResource(R.drawable.ic_nav_devices), contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary, modifier = Modifier.height(30.dp))
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("Phone infrared hardware", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        when {
+                            irHardware == null -> Text("Checking device capability…", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            !irHardware.transmitterAvailable -> Text(irHardware.diagnostic ?: "This phone does not expose a built-in IR transmitter.",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            irHardware.supportedCarrierRanges.isEmpty() -> Text(irHardware.diagnostic ?: "IR hardware found, but its carrier range is unavailable.",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            else -> Text("Transmitter available · " + irHardware.supportedCarrierRanges.joinToString { range ->
+                                "${range.minHz / 1_000f}–${range.maxHz / 1_000f} kHz"
+                            }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
                         }
                     }
                 }
             }
         }
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                )
-            ) {
-                Column(
-                    Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(
-                        "Experimental Daikin AC controls",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        "A dedicated full-state remote for two documented Daikin IR transport families. This is not a universal Daikin profile and has not been physically tested.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedButton(
-                        onClick = onOpenDaikinAc,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Open experimental AC remote")
+            Card(modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Import an IR remote", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("Choose a compatible Flipper Zero version-1 .ir file. Imported commands stay Unverified until tested with your appliance.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(value = importDisplayName, onValueChange = onDisplayNameChange,
+                        modifier = Modifier.fillMaxWidth(), label = { Text("Remote name") }, singleLine = true)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(value = importBrand, onValueChange = onBrandChange,
+                            modifier = Modifier.weight(1f), label = { Text("Brand or source") }, singleLine = true)
+                        OutlinedTextField(value = importModel, onValueChange = onModelChange,
+                            modifier = Modifier.weight(1f), label = { Text("Model (optional)") }, singleLine = true)
                     }
-                }
-            }
-        }
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                )
-            ) {
-                Column(
-                    Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(
-                        "Import an IR remote",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        "Select a Flipper Zero version-1 .ir remote file. Imported buttons are marked Unverified until their codes are tested with the actual appliance.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedTextField(
-                        value = importDisplayName,
-                        onValueChange = onDisplayNameChange,
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Remote name") },
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = importBrand,
-                        onValueChange = onBrandChange,
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Brand or source") },
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = importModel,
-                        onValueChange = onModelChange,
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Model (optional)") },
-                        singleLine = true
-                    )
-                    Text("Device category", style = MaterialTheme.typography.labelLarge)
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        DeviceCategory.entries.forEach { category ->
-                            FilterChip(
-                                selected = importCategory == category,
-                                onClick = { onCategoryChange(category) },
-                                label = { Text(category.displayName) }
-                            )
+                    Text("Device type", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        DeviceCategory.entries.chunked(2).forEach { group ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                group.forEach { category ->
+                                    FilterChip(selected = importCategory == category, onClick = { onCategoryChange(category) },
+                                        label = { Text(category.displayName) })
+                                }
+                            }
                         }
                     }
-                    Button(
-                        onClick = onChooseFile,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSaving && importDisplayName.isNotBlank() && importBrand.isNotBlank()
-                    ) {
+                    Button(onClick = onChooseFile, modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSaving && importDisplayName.isNotBlank() && importBrand.isNotBlank()) {
                         Text("Choose .ir file")
                     }
                     when (val state = importState) {
                         ImportState.Idle -> Unit
-                        ImportState.Reading -> Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
+                        ImportState.Reading -> Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             CircularProgressIndicator()
                             Text("Reading and validating file…")
                         }
-                        is ImportState.Error -> Text(
-                            state.message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                        is ImportState.Error -> Text(state.message, color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall)
                         is ImportState.Saved -> {
-                            Text(
-                                "${state.displayName} is saved on this phone and available offline.",
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            OutlinedButton(onClick = onClearImport) {
-                                Text("Import another remote")
-                            }
+                            Text("${state.displayName} is saved on this phone and available offline.",
+                                color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+                            OutlinedButton(onClick = onClearImport) { Text("Import another remote") }
                         }
                         is ImportState.Preview -> {
-                            Text(
-                                "Preview: ${state.profile.displayName}",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                "${state.sourceName} · ${state.profile.buttons.size} buttons · all Unverified",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Text("Preview · ${state.profile.displayName}", style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold)
+                            Text("${state.sourceName} · ${state.profile.buttons.size} commands · all Unverified",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             state.profile.buttons.forEach { button ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text(button.label, style = MaterialTheme.typography.bodyMedium)
                                     Text("Unverified", style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.tertiary)
                                 }
                             }
-                            Button(
-                                onClick = { onSaveProfile(state.profile) },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !isSaving
-                            ) {
-                                if (isSaving) CircularProgressIndicator()
-                                else Text("Save remote to Devices")
+                            Button(onClick = { onSaveProfile(state.profile) }, modifier = Modifier.fillMaxWidth(), enabled = !isSaving) {
+                                if (isSaving) CircularProgressIndicator() else Text("Save remote to Devices")
                             }
-                            OutlinedButton(onClick = onClearImport) {
-                                Text("Discard import")
-                            }
+                            OutlinedButton(onClick = onClearImport, modifier = Modifier.fillMaxWidth()) { Text("Discard import") }
                         }
                     }
                 }
             }
         }
         item {
-            Text(
-                "The current importer accepts supported parsed protocols and raw timing waveforms. Unsupported parsed protocols are rejected rather than converted to guessed codes. IR learning still requires compatible receiver hardware.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Card(modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Experimental AC support", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("A limited Daikin protocol experiment, not a universal AC database. Confirm your remote family before sending any command.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(onClick = onOpenDaikinAc, modifier = Modifier.fillMaxWidth()) {
+                        Text("Open experimental Daikin remote")
+                    }
+                }
+            }
+        }
+        item {
+            Text("Network TV discovery is available in the TV tab. Bluetooth discovery and infrared learning require additional supported hardware and are not included yet.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
