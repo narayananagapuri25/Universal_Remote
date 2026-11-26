@@ -1239,7 +1239,7 @@ private fun BoxForDropdown(
     expanded: Boolean,
     onClick: () -> Unit,
     onDismiss: () -> Unit,
-    content: @Composable () -> Unit
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
 ) {
     Column {
         OutlinedButton(onClick = onClick) {
