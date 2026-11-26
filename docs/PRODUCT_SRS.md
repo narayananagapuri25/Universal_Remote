@@ -147,6 +147,8 @@ The identifiers below are stable acceptance identifiers for implementation and t
 - **FR-076:** Voice supports English, Hindi and Telugu at launch. Prefer offline speech recognition when installed/available. Online speech fallback is optional, opt-in and free-only; explain when audio leaves the device. Clarify ambiguous commands.
 - **FR-077:** Voice commands map to explicit typed actions and may not bypass safety, confirmation, pairing or permission rules.
 
+**Implementation status (2026-11-26):** The first TV/STB layout subset is implemented for imported IR profiles. Users explicitly map an existing imported button to a semantic role (Power, navigation, OK, volume, channel, number pad and category-specific controls); mappings are persisted locally. The app does not infer a role from a command label. Unassigned roles are disabled and imported command evidence remains unchanged. Drag/resize layout editing, haptics, voice and hold-repeat remain future work.
+
 ### 5.9 Command execution and state model
 
 - **FR-080:** Each device has an independent command queue. Default execution is sequential for a given transport/device; independent devices may execute in parallel.
