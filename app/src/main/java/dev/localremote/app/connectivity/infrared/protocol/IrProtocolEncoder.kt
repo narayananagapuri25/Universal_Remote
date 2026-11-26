@@ -96,13 +96,16 @@ object IrProtocolEncoder {
             "Sony SIRC address"
         )
 
+        val extendedData = command.extendedData
         when (command.variant) {
             SonySircVariant.SIRC_12,
-            SonySircVariant.SIRC_15 -> require(command.extendedData == null) {
+            SonySircVariant.SIRC_15 -> require(extendedData == null) {
                 "Sony SIRC12/15 do not have an extended data field."
             }
             SonySircVariant.SIRC_20 -> requireRange(
-                command.extendedData ?: error("Sony SIRC20 requires an 8-bit extended data field."),
+                requireNotNull(extendedData) {
+                    "Sony SIRC20 requires an 8-bit extended data field."
+                },
                 0,
                 0xFF,
                 "Sony SIRC20 extended data"
@@ -120,7 +123,7 @@ object IrProtocolEncoder {
         if (command.variant == SonySircVariant.SIRC_20) {
             appendBitsLsbFirst(
                 pattern,
-                command.extendedData!!,
+                requireNotNull(extendedData),
                 8,
                 ::appendSonyBit
             )
