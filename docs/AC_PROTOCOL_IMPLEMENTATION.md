@@ -89,3 +89,10 @@ Manual checks required on a phone with a built-in IR emitter before any compatib
 7. Verify that the UI reports only “IR signal sent” and never claims the AC state was confirmed.
 
 The state editor is not yet persisted as a reusable saved AC profile. Timer programming, schedule programming, automatic feedback/state detection, remote-family auto-detection, and device-specific physical compatibility remain out of scope until separately verified.
+
+
+## 8. Saved AC profile behaviour
+
+The Android app now stores complete desired Daikin AC states in the local Room database (schema version 3). Saved profiles include the selected transport family, power, mode, half-degree setpoint, fan, swing and supported comfort flags. Users can save, load, update and delete profiles offline. The database migration from version 2 to version 3 creates the dedicated `daikin_ac_profiles` table without altering existing saved-device or imported IR-profile rows.
+
+Loading a saved profile deliberately clears the in-memory family-confirmation flag. Before a state can be sent, the user must again confirm that the selected ARC466A9-style or ARC480A11-style family matches the markings on the actual original remote or appliance documentation. A saved profile is a convenience for desired settings; it is not a verification record and does not establish model compatibility. Physical appliance testing remains mandatory.
