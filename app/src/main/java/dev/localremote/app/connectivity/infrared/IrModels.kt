@@ -30,10 +30,16 @@ data class IrHardwareStatus(
  * Consumer IR patterns start with an ON/mark duration and alternate
  * ON/OFF durations, measured in microseconds.
  */
-data class IrSignal(
+class IrSignal(
     val carrierFrequencyHz: Int,
-    val patternMicros: List<Int>
+    patternMicros: List<Int>
 ) {
+    /**
+     * Take a defensive snapshot so a caller cannot mutate a queued waveform
+     * after validation and before the platform dispatch.
+     */
+    val patternMicros: List<Int> = patternMicros.toList()
+
     val totalDurationMicros: Long
         get() = patternMicros.sumOf { it.toLong() }
 }
