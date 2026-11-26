@@ -16,6 +16,16 @@ class IrSignalValidatorTest {
     }
 
     @Test
+    fun signalTakesDefensiveCopyOfWaveform() {
+        val source = mutableListOf(500, 500)
+        val signal = IrSignal(38_000, source)
+
+        source[0] = 0
+
+        assertEquals(listOf(500, 500), signal.patternMicros)
+    }
+
+    @Test
     fun rejectsNonPositiveCarrierFrequency() {
         val signal = IrSignal(0, listOf(500, 500))
         assertEquals(
