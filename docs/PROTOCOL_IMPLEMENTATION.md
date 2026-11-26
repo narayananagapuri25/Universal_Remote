@@ -28,14 +28,14 @@ A protocol implementation does not prove that a particular brand or model uses t
 | Sony SIRC15 | 40 kHz | 7-bit command followed by 8-bit address; LSB first | The model profile must identify correct address and command |
 | Sony SIRC20 | 40 kHz | 7-bit command, 5-bit address and 8-bit extended field; LSB first | The additional field is kept explicit; no automatic inference |
 
-Encoders validate input bit ranges, produce immutable signal snapshots, and share the existing waveform validator. The Android transmitter adapter remains responsible for checking phone support and carrier ranges. Every transmission is a single explicit dispatch; no state-changing retry is performed automatically.
+Encoders validate input bit ranges, produce immutable signal snapshots, and share the existing waveform validator. Saved profile buttons can now carry either a protocol command or a raw waveform. The dispatcher validates raw waveforms before sending. The Android transmitter adapter remains responsible for checking phone support and carrier ranges. Every transmission is a single explicit dispatch; no state-changing retry is performed automatically.
 
 ## 3. Model profile and verification rules
 
 Profiles are model-specific, not brand-wide promises. Each button stores:
 
 - Stable button ID and visible label.
-- Typed protocol command parameters.
+- Typed protocol command parameters or a raw captured/imported waveform.
 - Optional long-press/repeat intent.
 - Evidence status and source reference.
 - Optional source-data licence identifier.
@@ -43,7 +43,7 @@ Profiles are model-specific, not brand-wide promises. Each button stores:
 
 The profile validator rejects duplicate button IDs, incomplete profile identity, protocol-verified commands without source references, and physically tested commands without a physical test record.
 
-The current branch contains the profile model and validator only. It does **not** yet contain a bundled list of working Samsung, LG, Sony, Daikin, Voltas, Tata Play, Airtel or other appliance commands. No fabricated or guessed model codes are shipped.
+The current branch contains the profile model, per-button validation and one-shot dispatcher for protocol commands and raw waveforms. It does **not** yet contain an IR receiver/learning capture implementation, a profile-file importer/exporter, or a bundled list of working Samsung, LG, Sony, Daikin, Voltas, Tata Play, Airtel or other appliance commands. No fabricated or guessed model codes are shipped.
 
 ## 4. Data-source and licence policy
 
