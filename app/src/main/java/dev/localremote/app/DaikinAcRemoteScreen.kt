@@ -12,15 +12,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.localremote.app.connectivity.infrared.IrHardwareStatus
 import dev.localremote.app.connectivity.infrared.IrTransmitResult
 import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcCommandDispatcher
@@ -40,16 +45,27 @@ import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcMode
 import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcRemotePolicy
 import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcState
 import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcTransportVariant
+import dev.localremote.app.data.local.DaikinAcProfileDao
+import dev.localremote.app.data.local.DaikinAcProfileEntity
+import dev.localremote.app.data.local.DaikinAcProfileMapper
 import kotlinx.coroutines.launch
 import java.util.Locale
+import java.util.UUID
 import kotlin.math.roundToInt
 
 @Composable
 internal fun DaikinAcRemoteScreen(
     irHardware: IrHardwareStatus?,
-    dispatcher: DaikinAcCommandDispatcher
+    dispatcher: DaikinAcCommandDispatcher,
+    profileDao: DaikinAcProfileDao
 ) {
     val scope = rememberCoroutineScope()
+    val savedProfiles by profileDao.observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
+    var profileName by rememberSaveable { mutableStateOf("My Daikin AC") }
+    var activeProfileId by rememberSaveable { mutableStateOf<String?>(null) }
+    var profileSaving by remember { mutableStateOf(false) }
+    var profileFeedback by remember { mutableStateOf<String?>(null) }
+    var pendingDeleteProfile by remember { mutableStateOf<DaikinAcProfileEntity?>(null) }
 
     var variantName by rememberSaveable { mutableStateOf<String?>(null) }
     var familyConfirmed by rememberSaveable { mutableStateOf(false) }
@@ -76,6 +92,22 @@ internal fun DaikinAcRemoteScreen(
         verticalSwing = verticalSwing
     )
     val canSend = !sending && sendBlockReason == null
+    val currentState = variant?.let { selectedVariant ->
+        DaikinAcState(
+            power = powerOn,
+            mode = mode,
+            temperatureCelsius = temperature,
+            fanSpeed = fanSpeed,
+            verticalSwing = verticalSwing,
+            horizontalSwing = horizontalSwing,
+            intelligentEye = intelligentEye,
+            econo = econo,
+            outdoorQuiet = outdoorQuiet,
+            powerful = powerful,
+            weeklyScheduleActive = false,
+            variant = selectedVariant
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -311,6 +343,170 @@ internal fun DaikinAcRemoteScreen(
             }
         }
 
+        ControlSection("Saved profiles on this phone") {
+            Text(
+                "Save this complete AC setup for quick reuse. Saved profiles stay on this phone and work offline. Loading one always asks you to confirm the original remote family again.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedTextField(
+                value = profileName,
+                onValueChange = {
+                    profileName = it.take(DaikinAcProfileMapper.MAX_DISPLAY_NAME_LENGTH)
+                    profileFeedback = null
+                },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Profile name") },
+                singleLine = true
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        val stateToSave = currentState ?: return@Button
+                        val profileId = activeProfileId ?: UUID.randomUUID().toString()
+                        profileSaving = true
+                        profileFeedback = null
+                        scope.launch {
+                            val result = runCatching {
+                                val entity = DaikinAcProfileMapper.toEntity(
+                                    profileId = profileId,
+                                    displayName = profileName,
+                                    state = stateToSave,
+                                    updatedAtEpochMillis = System.currentTimeMillis()
+                                )
+                                profileDao.upsert(entity)
+                                profileId
+                            }
+                            profileSaving = false
+                            profileFeedback = result.fold(
+                                onSuccess = {
+                                    activeProfileId = it
+                                    "Profile saved on this phone."
+                                },
+                                onFailure = {
+                                    it.message ?: "Could not save this profile."
+                                }
+                            )
+                        }
+                    },
+                    enabled = !profileSaving && currentState != null && profileName.isNotBlank(),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        when {
+                            profileSaving -> "Saving…"
+                            activeProfileId == null -> "Save profile"
+                            else -> "Update profile"
+                        }
+                    )
+                }
+                if (activeProfileId != null) {
+                    OutlinedButton(
+                        onClick = {
+                            val stateToSave = currentState ?: return@OutlinedButton
+                            profileSaving = true
+                            profileFeedback = null
+                            val newId = UUID.randomUUID().toString()
+                            scope.launch {
+                                val result = runCatching {
+                                    profileDao.upsert(
+                                        DaikinAcProfileMapper.toEntity(
+                                            profileId = newId,
+                                            displayName = profileName,
+                                            state = stateToSave,
+                                            updatedAtEpochMillis = System.currentTimeMillis()
+                                        )
+                                    )
+                                    newId
+                                }
+                                profileSaving = false
+                                profileFeedback = result.fold(
+                                    onSuccess = {
+                                        activeProfileId = it
+                                        "Saved as a new profile."
+                                    },
+                                    onFailure = {
+                                        it.message ?: "Could not save a new profile."
+                                    }
+                                )
+                            }
+                        },
+                        enabled = !profileSaving && currentState != null && profileName.isNotBlank()
+                    ) {
+                        Text("Save as new")
+                    }
+                }
+            }
+            if (!profileFeedback.isNullOrBlank()) {
+                Text(
+                    profileFeedback.orEmpty(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            if (savedProfiles.isEmpty()) {
+                Text(
+                    "No saved AC profiles yet.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                savedProfiles.forEach { profile ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(profile.displayName, style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium)
+                            Text(
+                                profile.transportVariant.replace('_', ' ') + " · Compatibility unverified",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                val restored = runCatching { DaikinAcProfileMapper.toState(profile) }
+                                restored.onSuccess { state ->
+                                    activeProfileId = profile.profileId
+                                    profileName = profile.displayName
+                                    powerOn = state.power
+                                    mode = state.mode
+                                    temperature = state.temperatureCelsius
+                                    fanSpeed = state.fanSpeed
+                                    verticalSwing = state.verticalSwing
+                                    horizontalSwing = state.horizontalSwing
+                                    intelligentEye = state.intelligentEye
+                                    econo = state.econo
+                                    outdoorQuiet = state.outdoorQuiet
+                                    powerful = state.powerful
+                                    variantName = state.variant.name
+                                    familyConfirmed = false
+                                    feedback = null
+                                    profileFeedback = "Loaded. Re-check the original remote marking before sending."
+                                }.onFailure {
+                                    profileFeedback = it.message ?: "This saved profile is invalid."
+                                }
+                            }
+                        ) {
+                            Text("Load")
+                        }
+                        OutlinedButton(
+                            onClick = { pendingDeleteProfile = profile },
+                            enabled = !profileSaving
+                        ) {
+                            Text("Delete")
+                        }
+                    }
+                }
+            }
+        }
+
         ControlSection("Send complete state") {
             Text(
                 "Sending replaces the AC's current settings with all values shown above. One tap sends one frame sequence; OneRemote never retries automatically.",
@@ -325,21 +521,7 @@ internal fun DaikinAcRemoteScreen(
             }
             Button(
                 onClick = {
-                    val selectedVariant = variant ?: return@Button
-                    val targetState = DaikinAcState(
-                        power = powerOn,
-                        mode = mode,
-                        temperatureCelsius = temperature,
-                        fanSpeed = fanSpeed,
-                        verticalSwing = verticalSwing,
-                        horizontalSwing = horizontalSwing,
-                        intelligentEye = intelligentEye,
-                        econo = econo,
-                        outdoorQuiet = outdoorQuiet,
-                        powerful = powerful,
-                        weeklyScheduleActive = false,
-                        variant = selectedVariant
-                    )
+                    val targetState = currentState ?: return@Button
                     sending = true
                     feedback = null
                     scope.launch {
@@ -369,6 +551,35 @@ internal fun DaikinAcRemoteScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+
+    pendingDeleteProfile?.let { profile ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteProfile = null },
+            title = { Text("Delete saved profile?") },
+            text = { Text("“${profile.displayName}” will be removed from this phone. This cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDeleteProfile = null
+                        scope.launch {
+                            runCatching { profileDao.deleteById(profile.profileId) }
+                            if (activeProfileId == profile.profileId) {
+                                activeProfileId = null
+                                profileFeedback = "Saved profile deleted."
+                            }
+                        }
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteProfile = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
