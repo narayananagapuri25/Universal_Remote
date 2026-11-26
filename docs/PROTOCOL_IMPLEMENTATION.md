@@ -22,7 +22,7 @@ A protocol implementation does not prove that a particular brand or model uses t
 | Protocol | Carrier | Current encoder behaviour | Important limitation |
 |---|---:|---|---|
 | NEC | 38 kHz | 8-bit address, inverted address, 8-bit command and inverted command; LSB first; 9 ms / 4.5 ms header and trailing mark | The protocol family alone does not supply model button values |
-| Extended NEC | 38 kHz | 16-bit address, 8-bit command and inverted command; LSB first | Legacy address pairs are rejected from the extended form |
+| Extended NEC (NECext) | 38 kHz | Independent 16-bit address and 16-bit command fields; LSB first; no inverse-byte layout | Distinct from legacy NEC's 8-bit address/inverse and 8-bit command/inverse layout |
 | Samsung32 | 38 kHz | Address byte repeated, command byte and inverted command; LSB first; 4.5 ms / 4.5 ms header | Samsung-family remotes can use other frame sizes/variants |
 | Sony SIRC12 | 40 kHz | 7-bit command followed by 5-bit address; LSB first; pulse-width modulation | The model profile must identify correct address and command |
 | Sony SIRC15 | 40 kHz | 7-bit command followed by 8-bit address; LSB first | The model profile must identify correct address and command |
@@ -43,7 +43,7 @@ Profiles are model-specific, not brand-wide promises. Each button stores:
 
 The profile validator rejects duplicate button IDs, incomplete profile identity, protocol-verified commands without source references, and physically tested commands without a physical test record.
 
-The current branch contains the profile model, per-button validation and one-shot dispatcher for protocol commands and raw waveforms. It does **not** yet contain an IR receiver/learning capture implementation, a profile-file importer/exporter, or a bundled list of working Samsung, LG, Sony, Daikin, Voltas, Tata Play, Airtel or other appliance commands. No fabricated or guessed model codes are shipped.
+The current branch contains the profile model, per-button validation and one-shot dispatcher for protocol commands and raw waveforms. It now includes a bounded reader/writer for Flipper-compatible version-1 `.ir` remote files. It supports `parsed` commands for NEC, NECext, Samsung32 and Sony SIRC12/15/20, and `raw` timing lists. Other parsed protocols (RC5/RC6/NEC42/Kaseikyo/RCA, etc.) are rejected until their OneRemote encoders are implemented; raw entries for those protocols remain importable. This file codec is not an IR receiver/learning capture implementation. No bundled list of working Samsung, LG, Sony, Daikin, Voltas, Tata Play, Airtel or other appliance commands is included. No fabricated or guessed model codes are shipped.
 
 ## 4. Data-source and licence policy
 
@@ -67,14 +67,15 @@ Potential future data sources require per-repository and, where relevant, per-fi
 4. **Flipper Devices IRDB** — a separate official repository reports an MIT repository licence. Each candidate dataset's actual file and history still need inspection before copying.
    - https://github.com/flipperdevices/IRDB
 
-The catalogue build must preserve source URL/reference, retrieval date, file path or code-set ID, licence identifier and any attribution/notice requirements. Entries with unclear provenance are excluded from shipped data until resolved. Device brand names are used only to identify compatibility; no manufacturer endorsement is implied.
+The Flipper-compatible `.ir` importer treats all imported commands as UNVERIFIED, because the file format does not attest to rights, source or physical compatibility. It preserves raw frequency, duty-cycle metadata and mark/space timing values, but Android's `ConsumerIrManager` has no duty-cycle argument; the built-in transmitter cannot guarantee or apply the imported duty cycle. The requested duty cycle remains available for export or future accessory adapters. The catalogue build must preserve source URL/reference, retrieval date, file path or code-set ID, licence identifier and any attribution/notice requirements. Entries with unclear provenance are excluded from shipped data until resolved. Device brand names are used only to identify compatibility; no manufacturer endorsement is implied.
 
 ## 5. Protocol references used for independent implementation
 
 - NEC framing, LSB-first bit order, 9 ms leader, 4.5 ms space, inverted bytes and repeat frame: https://www.sbprojects.net/knowledge/ir/nec.php
 - Sony SIRC 12/15/20-bit layouts, 40 kHz carrier, pulse-width modulation and bit order: https://www.sbprojects.net/knowledge/ir/sirc.php
 - Samsung32 pulse-distance timing and 38 kHz frame references: https://arduino-irremote.github.io/Arduino-IRremote/ir__Samsung_8hpp_source.html
-- Android ConsumerIrManager hardware detection, frequency ranges and synchronous transmit contract: https://developer.android.com/reference/android/hardware/ConsumerIrManager
+- Android ConsumerIrManager hardware detection, frequency ranges and synchronous transmit contract (no duty-cycle argument): https://developer.android.com/reference/android/hardware/ConsumerIrManager
+- Official Flipper Zero `.ir` format: `Filetype`, version, parsed/raw blocks, four-byte little-endian address/command, frequency, duty cycle and maximum 1,024 raw timing values: https://developer.flipper.net/flipperzero/doxygen/infrared_file_format.html
 
 These are protocol descriptions/reference materials. The OneRemote source code is independently written; no source implementation from those projects is copied into the Android app.
 
