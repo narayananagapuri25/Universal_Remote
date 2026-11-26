@@ -1,6 +1,7 @@
 package dev.localremote.app.connectivity.infrared.protocol
 
 import dev.localremote.app.core.model.DeviceCategory
+import dev.localremote.app.connectivity.infrared.IrSignalValidator
 
 enum class ProfileVerificationStatus {
     UNVERIFIED,
@@ -23,7 +24,7 @@ data class IrCommandEvidence(
 data class IrRemoteButton(
     val id: String,
     val label: String,
-    val command: IrProtocolCommand,
+    val command: IrCommandSpec,
     val repeatWhileHeld: Boolean = false,
     val evidence: IrCommandEvidence = IrCommandEvidence()
 )
@@ -37,7 +38,9 @@ data class IrRemoteProfile(
     val buttons: List<IrRemoteButton>
 ) {
     val protocolIds: Set<IrProtocolId>
-        get() = buttons.mapTo(linkedSetOf()) { it.command.protocolId }
+        get() = buttons.mapNotNullTo(linkedSetOf()) { button ->
+            (button.command as? IrCommandSpec.Protocol)?.command?.protocolId
+        }
 }
 
 object IrRemoteProfileValidator {
@@ -62,6 +65,12 @@ object IrRemoteProfileValidator {
 
             if (button.id.isBlank()) errors += "$prefix has a blank ID."
             if (button.label.isBlank()) errors += "$prefix has a blank label."
+
+            if (button.command is IrCommandSpec.Raw) {
+                IrSignalValidator.validate(button.command.signal)?.let { issue ->
+                    errors += "$prefix has an invalid raw IR signal: $issue"
+                }
+            }
 
             val evidence = button.evidence
             when (evidence.status) {
