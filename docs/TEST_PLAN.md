@@ -92,6 +92,8 @@ A model is marked Physically tested only after the actual hardware test is recor
 
 **LAN devices:** verify mDNS, SSDP, documented API, authentication, TLS/certificate failure, network changes, DHCP address change, multiple devices, router isolation/client isolation and permission denial/revocation. Ensure no traffic leaves the local subnet for a control command.
 
+**Android TV Remote v2 / Realme TechLife:** verify `_androidtvremote2._tcp.` discovery and manual IP fallback; pairing request/options/configuration acknowledgements; valid and invalid six-character pairing codes; RSA pairing-secret known-answer vector; Android Keystore client certificate persistence; TV-certificate pinning and changed-certificate rejection; remote feature negotiation; no key sends before the remote service activates; key injection and ping replies; reconnection after Wi-Fi changes; explicit forget/unpair; and service-unavailable guidance. Physical acceptance requires the owner's exact Realme TV model/revision: pair on-screen, then verify Home, Back, D-pad/OK, volume, mute, input and power on the real TV. CI/protocol tests do not count as physical compatibility.
+
 **AC:** test each supported mode, setpoint min/max/step, full-state frames, fan/swing/timer bits, model variants and command sequencing against real AC hardware. Avoid claiming confirmation if no authoritative feedback exists.
 
 **TV/STB:** test power discrete/toggle semantics, volume routing, source, number keys, channel, menu navigation, media, app launch, keyboard/touchpad and standby wake independently per model.
@@ -204,7 +206,7 @@ Release gates:
 ## 10. Current test blockers / TBD
 
 - User's primary Android phone model and IR emitter capability are not yet recorded.
-- Exact available TV, AC, set-top box, Bluetooth and external IR accessory models are not yet recorded.
+- The exact Realme TechLife TV model/revision and its Android TV Remote Service availability are still pending physical confirmation. AC, set-top box, Bluetooth and external IR accessory models also remain to be recorded.
 - The first physical compatibility lab matrix must be created when hardware is identified.
 - API 37.2 compile platform is required by the pinned stable Compose dependency set. API 37/37.2 runtime test devices or emulator images must be confirmed during implementation; targetSdk36 and targetSdk37 behaviour must be tested separately.
 - No model can receive the “Physically tested” label until evidence exists.

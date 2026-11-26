@@ -181,6 +181,8 @@ Create accessory adapters by verified vendor/API/device type: USB host/serial/HI
 - Manual IP/port configuration only for explicitly supported protocols.
 - Restrict traffic to local addresses and known service ports. No general-purpose port scanner.
 - Use authentication/TLS/pairing supported by the device. Record legacy unauthenticated transports and require user-visible warnings.
+- Android TV Remote v2 adapter: discover only `_androidtvremote2._tcp.` on the active LAN; pair on TLS port 6467 using the six-character code shown by the TV; keep the client RSA identity in Android Keystore; pin the TV certificate for subsequent TLS control connections on port 6466; negotiate key-control capability before enabling controls; reply to service pings; no ADB, remote relay, cloud service or arbitrary port scan.
+- Initial app entry point is labelled Realme TechLife TV. This is a first target, not a blanket compatibility promise: the specific television must expose a compatible Android TV Remote Service and complete physical pairing/control tests before it can be marked Physically tested.
 
 Android 17/API 37 enforces `ACCESS_LOCAL_NETWORK` for apps targeting API 37+ that use LAN sockets, mDNS, SSDP and `NsdManager`. Implement an OS/target-SDK-aware permission strategy. For API 37+, request broad local-network permission only when required for full home-automation discovery/control; handle denied/revoked gracefully. Use privacy-preserving system-mediated pickers where they cover a specific use case, but do not expect a casting picker to replace the app's broad control use case.
 

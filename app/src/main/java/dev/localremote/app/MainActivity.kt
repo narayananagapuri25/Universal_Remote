@@ -79,6 +79,7 @@ import java.util.UUID
 private enum class Destination(val label: String) {
     DEVICES("Devices"),
     DISCOVER("Discover"),
+    REALME_TV("TV"),
     SETTINGS("Settings")
 }
 
@@ -266,6 +267,7 @@ private fun OneRemoteApp(
                             openDaikinAc -> "Daikin AC · Experimental"
                             openProfileId != null ->
                                 (currentRemoteState as? RemoteLoadState.Loaded)?.profile?.displayName ?: "Remote"
+                            destination == Destination.REALME_TV -> "Realme TechLife TV"
                             else -> "OneRemote"
                         },
                         fontWeight = FontWeight.SemiBold
@@ -401,6 +403,7 @@ private fun OneRemoteApp(
                         },
                         onClearImport = { importState = ImportState.Idle }
                     )
+                    Destination.REALME_TV -> RealmeTvRemoteScreen()
                     Destination.SETTINGS -> SettingsScreen()
                 }
             }
