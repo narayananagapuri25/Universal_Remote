@@ -33,6 +33,7 @@ The `app/` module is the first native Android implementation foundation:
 - Minimum Android API 26; compile SDK API 37.2; target SDK API 36
 - Compose Material 3 UI shell with Devices, Discover and Settings
 - Room-backed local saved-device persistence
+- Room-backed Daikin AC profile save/load/update/delete with schema migration and state validation
 - First-release category and command-safety domain types
 - Independently authored NEC, extended NEC, Samsung32 and Sony SIRC12/15/20 protocol encoders with golden-vector tests
 - Model-specific IR profile/button model with per-command compatibility evidence, raw waveform or typed protocol commands, and validator
@@ -42,7 +43,7 @@ The `app/` module is the first native Android implementation foundation:
 - Smart TV/set-top-box volume-routing policy with unit tests
 - GitHub Actions verification: unit tests, Android Lint and debug APK assembly
 
-The app now has a model-specific IR profile data model, protocol encoders and a Flipper-compatible `.ir` import/export codec. An experimental Daikin AC state editor is exposed from Discover for the documented ARC466A9-style three-frame and ARC480A11-style one-frame protocol families. It requires the user to select and attest to the matching family, checks the phone's reported 38 kHz capability, and sends one complete state frame without retries. This is not a universal Daikin profile, has not been physically tested by OneRemote, and is not yet stored as a reusable AC device profile. There is still no bundled brand/model IR code catalogue. LAN/Bluetooth discovery and pairing and physical IR receiver learning remain unimplemented. The Discover screen also reports built-in IR capability without transmitting during setup. The first build uses a provisional application ID (`dev.localremote.app`) pending product-name clearance; it must not be published under this ID before identity review.
+The app now has a model-specific IR profile data model, protocol encoders and a Flipper-compatible `.ir` import/export codec. An experimental Daikin AC state editor is exposed from Discover for the documented ARC466A9-style three-frame and ARC480A11-style one-frame protocol families. It requires the user to select and attest to the matching family, checks the phone's reported 38 kHz capability, and sends one complete state frame without retries. This is not a universal Daikin profile and has not been physically tested by OneRemote. Complete AC states can now be saved, loaded, updated and deleted locally; loading requires the original remote family to be confirmed again before sending. There is still no bundled brand/model IR code catalogue. LAN/Bluetooth discovery and pairing and physical IR receiver learning remain unimplemented. The Discover screen also reports built-in IR capability without transmitting during setup. The first build uses a provisional application ID (`dev.localremote.app`) pending product-name clearance; it must not be published under this ID before identity review.
 
 See [IR protocol implementation and data policy](docs/PROTOCOL_IMPLEMENTATION.md) for supported encoder families, code-data licensing rules and compatibility evidence requirements.
 
