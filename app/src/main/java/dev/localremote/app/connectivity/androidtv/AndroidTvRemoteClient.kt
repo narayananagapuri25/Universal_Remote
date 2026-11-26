@@ -223,8 +223,8 @@ class AndroidTvRemoteClient(context: Context) {
     fun loadSavedTv(): SavedAndroidTv? {
         val storedIdentityVersion = preferences.getInt(KEY_IDENTITY_VERSION, 1)
         if (storedIdentityVersion < IDENTITY_VERSION) {
-            // The previous Android Keystore key did not permit RSA-PSS signatures.
-            // It cannot be reused for the updated TLS identity, so require a fresh pairing.
+            // The previous Android Keystore key did not permit TLS raw-digest signing.
+            // It cannot be reused for this TLS identity, so require a fresh pairing.
             preferences.edit()
                 .remove(KEY_HOST)
                 .remove(KEY_NAME)
@@ -389,7 +389,11 @@ class AndroidTvRemoteClient(context: Context) {
                 KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
             )
                 .setKeySize(2048)
-                .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
+                .setDigests(
+                    KeyProperties.DIGEST_NONE,
+                    KeyProperties.DIGEST_SHA256,
+                    KeyProperties.DIGEST_SHA512
+                )
                 .setSignaturePaddings(
                     KeyProperties.SIGNATURE_PADDING_RSA_PKCS1,
                     KeyProperties.SIGNATURE_PADDING_RSA_PSS
@@ -478,9 +482,9 @@ class AndroidTvRemoteClient(context: Context) {
         const val KEY_NAME = "name"
         const val KEY_FINGERPRINT = "certificate_fingerprint"
         const val ANDROID_KEYSTORE = "AndroidKeyStore"
-        const val CLIENT_KEY_ALIAS = "oneremote_android_tv_client_v2"
+        const val CLIENT_KEY_ALIAS = "oneremote_android_tv_client_v3"
         const val KEY_IDENTITY_VERSION = "identity_version"
-        const val IDENTITY_VERSION = 2
+        const val IDENTITY_VERSION = 3
         const val STATUS_OK = 200
         const val PAIRING_PORT = 6467
         const val REMOTE_PORT = 6466
