@@ -25,7 +25,8 @@ internal object AndroidTvAppLinkLaunchEncoder {
         require(uri.isAbsolute && uri.scheme.equals("https", ignoreCase = true)) {
             "TV app shortcuts must use HTTPS links."
         }
-        require(uri.host?.lowercase() in allowedHosts && uri.userInfo == null && uri.port in setOf(-1, 443)) {
+        val host = uri.host?.lowercase()
+        require(host != null && host in allowedHosts && uri.userInfo == null && uri.port in setOf(-1, 443)) {
             "TV app shortcut link is not on the approved host list."
         }
         require(shortcut.appLink.length <= MAX_LINK_LENGTH) {
