@@ -12,7 +12,10 @@ class OneRemoteApplication : Application() {
             OneRemoteDatabase::class.java,
             "oneremote-local.db"
         )
-            .addMigrations(OneRemoteDatabase.MIGRATION_1_2)
+            .addMigrations(
+                OneRemoteDatabase.MIGRATION_1_2,
+                OneRemoteDatabase.MIGRATION_2_3
+            )
             .build()
     }
 
