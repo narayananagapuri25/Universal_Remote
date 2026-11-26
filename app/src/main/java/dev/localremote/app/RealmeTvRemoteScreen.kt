@@ -117,7 +117,9 @@ fun RealmeTvRemoteScreen() {
                 }
                 session?.close()
                 session = nextSession
-                status = "Secure connection opened. Waiting for the TV remote service…"
+                if (!connected) {
+                    status = "Secure TLS session opened. Waiting for the TV ready signal…"
+                }
             } catch (failure: Throwable) {
                 updateConnectionStatus(
                     failure.message ?: "Could not connect. Check the TV is awake and on the same Wi-Fi."

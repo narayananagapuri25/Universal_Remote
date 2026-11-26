@@ -471,7 +471,7 @@ class AndroidTvRemoteSession internal constructor(
 
     fun sendKey(keyCode: Int) {
         check(!closed && ready) { "The TV remote session is not ready." }
-        require(keyCode in 1..337) { "Unsupported Android TV key code." }
+        require(keyCode in 1..304) { "Unsupported Android TV key code." }
         val keyInject = ProtoWriter().varint(1, keyCode.toLong()).varint(2, 3).toByteArray()
         sendRemoteMessage(10, keyInject)
     }
@@ -495,7 +495,7 @@ class AndroidTvRemoteSession internal constructor(
             val deviceInfo = ProtoWriter()
                 .varint(3, 1)
                 .string(4, "1")
-                .string(5, "dev.localremote.app")
+                .string(5, "atvremote")
                 .string(6, "0.1.0")
                 .toByteArray()
             val reply = ProtoWriter()
@@ -509,8 +509,7 @@ class AndroidTvRemoteSession internal constructor(
         val setActive = ProtoReader.firstBytes(fields, 2)
         if (setActive != null) {
             sendRemoteMessage(2, ProtoWriter().varint(1, negotiatedFeatures.toLong()).toByteArray())
-            ready = true
-            postStatus("Connected to Android TV over your local Wi-Fi.")
+            postStatus("TV accepted the remote features. Waiting for the ready signal…")
             return
         }
 
@@ -524,7 +523,11 @@ class AndroidTvRemoteSession internal constructor(
         val started = ProtoReader.firstBytes(fields, 40)
         if (started != null) {
             val power = ProtoReader.firstNumber(ProtoReader.parse(started), 1) == 1L
-            mainHandler.post { onPowerState(power) }
+            ready = true
+            mainHandler.post {
+                onPowerState(power)
+                onStatus("Connected to Android TV over your local Wi-Fi.")
+            }
             return
         }
 

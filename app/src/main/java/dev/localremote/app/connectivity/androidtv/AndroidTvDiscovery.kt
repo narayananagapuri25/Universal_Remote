@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
+import android.os.Handler
+import android.os.Looper
 import java.util.concurrent.ConcurrentHashMap
 
 data class AndroidTvEndpoint(
@@ -18,8 +20,10 @@ class AndroidTvDiscovery(context: Context) : AutoCloseable {
     private val manager = appContext.getSystemService(Context.NSD_SERVICE) as NsdManager
     private val wifiManager = appContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
     private val resolving = ConcurrentHashMap.newKeySet<String>()
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var listener: NsdManager.DiscoveryListener? = null
     private var multicastLock: WifiManager.MulticastLock? = null
+    private val stopScan = Runnable { stop() }
 
     @Synchronized
     fun start(onFound: (AndroidTvEndpoint) -> Unit, onError: (String) -> Unit) {
@@ -74,6 +78,7 @@ class AndroidTvDiscovery(context: Context) : AutoCloseable {
                 acquire()
             }
             manager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discovery)
+            mainHandler.postDelayed(stopScan, SCAN_WINDOW_MS)
         } catch (failure: RuntimeException) {
             releaseMulticastLock()
             listener = null
@@ -83,6 +88,7 @@ class AndroidTvDiscovery(context: Context) : AutoCloseable {
 
     @Synchronized
     fun stop() {
+        mainHandler.removeCallbacks(stopScan)
         listener?.let { active ->
             runCatching { manager.stopServiceDiscovery(active) }
         }
@@ -103,5 +109,6 @@ class AndroidTvDiscovery(context: Context) : AutoCloseable {
         const val SERVICE_TYPE = "_androidtvremote2._tcp."
         const val SERVICE_TYPE_PREFIX = "_androidtvremote2._tcp"
         const val REMOTE_PORT = 6466
+        const val SCAN_WINDOW_MS = 15_000L
     }
 }
