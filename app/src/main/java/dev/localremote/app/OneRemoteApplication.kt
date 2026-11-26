@@ -14,7 +14,8 @@ class OneRemoteApplication : Application() {
         )
             .addMigrations(
                 OneRemoteDatabase.MIGRATION_1_2,
-                OneRemoteDatabase.MIGRATION_2_3
+                OneRemoteDatabase.MIGRATION_2_3,
+                OneRemoteDatabase.MIGRATION_3_4
             )
             .build()
     }
