@@ -27,12 +27,18 @@ No blocker/high-severity safety, security, privacy, data-loss or command-routing
 
 ### 2.2 Pure Kotlin unit tests
 
+The first implementation branch now has deterministic unit coverage for built-in IR capability checks, waveform validation, protocol encoders (NEC, NECext, Samsung32, Sony SIRC) and profile metadata validation. These tests prove encoding/validation logic only; they do not prove a specific appliance will respond.
+
 - Device identity normalization, confidence scoring and duplicate prevention.
 - Capability selection and connection-route recommendation.
 - Command idempotency and PowerOn/PowerOff/PowerToggle classification.
 - AC state transitions, full-state packet generation, checksum and boundary values.
 - TV/STB key mapping, channel list parsing and source selection.
-- IR code parsing, carrier/timing bounds, repeat frames and truncation rejection.\n- Built-in IR capability detection, reported carrier-range enforcement, malformed waveform rejection, strict under-two-second duration, serialised transmitter access and no false appliance-state confirmation.
+- IR code parsing, carrier/timing bounds, repeat frames and truncation rejection.
+- Golden-vector tests for NEC, extended NEC, Samsung32 and Sony SIRC12/15/20 timing, payload bit order, field boundaries and invalid values.
+- Device-profile validation for unique button IDs, evidence references and physical test-record requirements.
+- Protocol dispatch test proving one encode/one transmit and no retry.
+- Built-in IR capability detection, reported carrier-range enforcement, malformed waveform rejection, strict under-two-second duration, serialised transmitter access and no false appliance-state confirmation.
 - IR learning capture parsing, noise/incomplete-signal rejection, raw waveform bounds, replay mapping and receiver-not-present flow.
 - Command queue sequencing, parallelism across devices, cancellation and duplicate suppression.
 - Scene failure continuation, stop-on-failure override and recovery scene presentation.
