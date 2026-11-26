@@ -41,7 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.consume
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -398,6 +397,7 @@ fun RealmeTvRemoteScreen() {
                         textInputAvailable = false
                         textInputHint = "TV text input"
                         textToSend = ""
+                        showConnectionSetup = true
                         status = "Saved TV pairing removed from this phone."
                     }) { Text("Forget") }
                 }
@@ -425,7 +425,7 @@ fun RealmeTvRemoteScreen() {
         item {
             val modes = listOf("Remote", "Touchpad", "Keyboard", "More")
             TabRow(selectedTabIndex = modes.indexOf(selectedMode).coerceAtLeast(0)) {
-                modes.forEachIndexed { index, mode ->
+                modes.forEach { mode ->
                     Tab(
                         selected = selectedMode == mode,
                         onClick = { selectedMode = mode },
