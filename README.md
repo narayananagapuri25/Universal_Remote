@@ -42,7 +42,7 @@ The `app/` module is the first native Android implementation foundation:
 - Smart TV/set-top-box volume-routing policy with unit tests
 - GitHub Actions verification: unit tests, Android Lint and debug APK assembly
 
-The app now has a model-specific IR profile data model and protocol encoders, but no bundled brand/model command catalogue or completed user-facing appliance remote yet. LAN/Bluetooth discovery and pairing remain unimplemented. The Discover screen reports built-in IR capability without transmitting a signal during setup. The first build uses a provisional application ID (`dev.localremote.app`) pending product-name clearance; it must not be published under this ID before identity review.
+The app now has a model-specific IR profile data model, protocol encoders and a Flipper-compatible `.ir` import/export codec, but no bundled brand/model command catalogue or completed user-facing appliance remote yet. LAN/Bluetooth discovery and pairing remain unimplemented. The Discover screen reports built-in IR capability without transmitting a signal during setup. A UI file-picker and actual IR receiver learning flow are still pending. The first build uses a provisional application ID (`dev.localremote.app`) pending product-name clearance; it must not be published under this ID before identity review.
 
 See [IR protocol implementation and data policy](docs/PROTOCOL_IMPLEMENTATION.md) for supported encoder families, code-data licensing rules and compatibility evidence requirements.
 
