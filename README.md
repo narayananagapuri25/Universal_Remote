@@ -3,7 +3,7 @@
 **Working product name:** OneRemote (provisional; branding clearance required)  
 **Baseline:** v1.0  
 **Date:** 2026-11-26  
-**Status:** Requirements consolidated; specification review pending  
+**Status:** Requirements and engineering baseline accepted; native Android implementation in progress  
 **Repository:** `narayananagapuri25/Universal_Remote`
 
 This package converts the gathered product requirements into an implementation-ready starting point. It contains:
@@ -57,12 +57,11 @@ The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. This br
 
 ## Approval and implementation policy
 
-1. Review the SRS, architecture, test plan and risk register.
-2. Resolve the branding, legal/licensing, monetisation and hardware test gates listed in the risk register.
-3. Review the engineering-baseline pull request and explicitly approve it before merge.
-4. Implement only on feature branches.
-5. Require mandatory CI checks and explicit owner approval before every merge to `main`.
-6. Do not publish an APK until all release gates in `docs/TEST_PLAN.md` pass.
+1. Use the merged SRS, architecture, test plan and risk register as the implementation baseline.
+2. Resolve branding, legal/licensing, monetisation and hardware-test gates before their dependent release.
+3. Implement only on feature branches and submit pull requests.
+4. Require mandatory CI checks and the owner's explicit approval before every merge to `main`.
+5. Do not publish a production APK until all release gates in `docs/TEST_PLAN.md` pass.
 
 ## Source references
 
