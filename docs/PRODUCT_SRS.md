@@ -102,7 +102,7 @@ The identifiers below are stable acceptance identifiers for implementation and t
 - **FR-026:** Use authenticated pairing where the target protocol supports it. Warn when a legacy protocol has no authentication/encryption. Never bypass manufacturer authentication or silently trust unknown devices.
 - **FR-027:** A connection/discovery adapter reports the actual capabilities and security class of the endpoint. Unsupported methods are shown as unavailable, not simulated.
 
-**Implementation status (2026-11-26):** OneRemote now has an initial Android TV Remote v2 integration path for the Realme TechLife TV target: mDNS discovery of the documented service, manual local-IP fallback, on-TV six-character pairing, Android Keystore client identity, TV-certificate pinning on the remote channel, remote feature negotiation and key injection. This implementation remains pending CI and physical testing against the owner's exact Realme TV model. It must not be labelled Physically tested until successful on-device pairing and core key checks have been observed.
+**Implementation status (2026-11-26):** OneRemote now has an initial manufacturer-neutral Android TV Remote v2 integration path, with Realme TechLife as the first physical validation target: mDNS discovery of the documented service, manual local-IP fallback, on-TV six-character pairing, Android Keystore client identity, TV-certificate pinning on the remote channel, remote feature negotiation and key injection. This implementation remains pending CI and physical testing against the owner's exact Realme TV model. It must not be labelled Physically tested until successful on-device pairing and core key checks have been observed.
 
 ### 5.4 Connectivity and hardware capability
 

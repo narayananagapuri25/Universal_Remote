@@ -24,6 +24,8 @@ A protocol implementation does not prove that a particular brand or model uses t
 | NEC | 38 kHz | 8-bit address, inverted address, 8-bit command and inverted command; LSB first; 9 ms / 4.5 ms header and trailing mark | The protocol family alone does not supply model button values |
 | Extended NEC (NECext) | 38 kHz | Independent 16-bit address and 16-bit command fields; LSB first; no inverse-byte layout | Distinct from legacy NEC's 8-bit address/inverse and 8-bit command/inverse layout |
 | Samsung32 | 38 kHz | Address byte repeated, command byte and inverted command; LSB first; 4.5 ms / 4.5 ms header | Samsung-family remotes can use other frame sizes/variants |
+| Philips RC5 | 36 kHz | 14-bit Manchester frame; two start bits, toggle, 5-bit address and 6-bit command; 889 µs half-bit cells | Toggle state alternates for each new key press and is persisted per saved remote |
+| Philips RC5X | 36 kHz | RC5 frame with S2 used as inverse command bit 6, providing a 7-bit command | Same per-remote toggle handling; held-key repeat timing is not exposed by the UI |
 | Sony SIRC12 | 40 kHz | 7-bit command followed by 5-bit address; LSB first; pulse-width modulation | The model profile must identify correct address and command |
 | Sony SIRC15 | 40 kHz | 7-bit command followed by 8-bit address; LSB first | The model profile must identify correct address and command |
 | Sony SIRC20 | 40 kHz | 7-bit command, 5-bit address and 8-bit extended field; LSB first | The additional field is kept explicit; no automatic inference |
@@ -43,7 +45,7 @@ Profiles are model-specific, not brand-wide promises. Each button stores:
 
 The profile validator rejects duplicate button IDs, incomplete profile identity, protocol-verified commands without source references, and physically tested commands without a physical test record.
 
-The current branch contains the profile model, per-button validation and one-shot dispatcher for protocol commands and raw waveforms. It now includes a bounded reader/writer for Flipper-compatible version-1 `.ir` remote files. It supports `parsed` commands for NEC, NECext, Samsung32 and Sony SIRC12/15/20, and `raw` timing lists. Other parsed protocols (RC5/RC6/NEC42/Kaseikyo/RCA, etc.) are rejected until their OneRemote encoders are implemented; raw entries for those protocols remain importable. This file codec is not an IR receiver/learning capture implementation. No bundled list of working Samsung, LG, Sony, Daikin, Voltas, Tata Play, Airtel or other appliance commands is included. No fabricated or guessed model codes are shipped.
+The current branch contains the profile model, per-button validation and one-shot dispatcher for protocol commands and raw waveforms. It now includes a bounded reader/writer for Flipper-compatible version-1 `.ir` remote files. It supports `parsed` commands for NEC, NECext, Samsung32 and Sony SIRC12/15/20, and `raw` timing lists. Other parsed protocols (RC6/NEC42/Kaseikyo/RCA, etc.) are rejected until their OneRemote encoders are implemented; raw entries for those protocols remain importable. This file codec is not an IR receiver/learning capture implementation. No bundled list of working Samsung, LG, Sony, Daikin, Voltas, Tata Play, Airtel or other appliance commands is included. No fabricated or guessed model codes are shipped.
 
 ## 4. Data-source and licence policy
 
