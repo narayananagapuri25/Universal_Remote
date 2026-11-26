@@ -36,8 +36,8 @@ The first implementation branch now has deterministic unit coverage for built-in
 - TV/STB key mapping, channel list parsing and source selection.
 - IR code parsing, carrier/timing bounds, repeat frames and truncation rejection.
 - Golden-vector tests for NEC, extended NEC, Samsung32 and Sony SIRC12/15/20 timing, payload bit order, field boundaries and invalid values.
-- Device-profile validation for unique button IDs, evidence references and physical test-record requirements.
-- Protocol dispatch test proving one encode/one transmit and no retry.
+- Device-profile validation for unique button IDs, evidence references, physical test-record requirements and raw waveform validity.
+- Protocol/raw dispatch tests proving one encode/one transmit and no retry; invalid raw patterns must be rejected before hardware access.
 - Built-in IR capability detection, reported carrier-range enforcement, malformed waveform rejection, strict under-two-second duration, serialised transmitter access and no false appliance-state confirmation.
 - IR learning capture parsing, noise/incomplete-signal rejection, raw waveform bounds, replay mapping and receiver-not-present flow.
 - Command queue sequencing, parallelism across devices, cancellation and duplicate suppression.
