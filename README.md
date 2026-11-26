@@ -35,8 +35,8 @@ The `app/` module is the first native Android implementation foundation:
 - Room-backed local saved-device persistence
 - First-release category and command-safety domain types
 - Independently authored NEC, extended NEC, Samsung32 and Sony SIRC12/15/20 protocol encoders with golden-vector tests
-- Model-specific IR profile/button model with per-command compatibility evidence and validator
-- One-shot protocol dispatcher connected to the guarded transmitter
+- Model-specific IR profile/button model with per-command compatibility evidence, raw waveform or typed protocol commands, and validator
+- One-shot dispatcher for protocol or validated raw waveform commands connected to the guarded transmitter
 - Built-in IR capability inspection, carrier-range validation and guarded transmit adapter with unit tests
 - Smart TV/set-top-box volume-routing policy with unit tests
 - GitHub Actions verification: unit tests, Android Lint and debug APK assembly
