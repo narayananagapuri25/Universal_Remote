@@ -32,7 +32,7 @@ No blocker/high-severity safety, security, privacy, data-loss or command-routing
 - Command idempotency and PowerOn/PowerOff/PowerToggle classification.
 - AC state transitions, full-state packet generation, checksum and boundary values.
 - TV/STB key mapping, channel list parsing and source selection.
-- IR code parsing, carrier/timing bounds, repeat frames and truncation rejection.
+- IR code parsing, carrier/timing bounds, repeat frames and truncation rejection.\n- Built-in IR capability detection, reported carrier-range enforcement, malformed waveform rejection, strict under-two-second duration, serialised transmitter access and no false appliance-state confirmation.
 - IR learning capture parsing, noise/incomplete-signal rejection, raw waveform bounds, replay mapping and receiver-not-present flow.
 - Command queue sequencing, parallelism across devices, cancellation and duplicate suppression.
 - Scene failure continuation, stop-on-failure override and recovery scene presentation.
