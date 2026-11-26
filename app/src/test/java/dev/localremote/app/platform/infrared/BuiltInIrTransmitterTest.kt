@@ -88,7 +88,7 @@ class BuiltInIrTransmitterTest {
             ranges = listOf(IrFrequencyRange(36_000, 40_000))
         )
         val result = BuiltInIrTransmitter(driver, Dispatchers.Unconfined)
-            .transmit(IrSignal(38_000, listOf(100, 100, 100)))
+            .transmit(IrSignal(38_000, listOf(100, 0, 100)))
 
         assertTrue(result is IrTransmitResult.Rejected)
         assertFalse(driver.transmitCalled)
