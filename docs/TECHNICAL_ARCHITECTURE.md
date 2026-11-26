@@ -6,7 +6,7 @@
 | Version | 1.0 |
 | Date | 2026-11-26 |
 | Status | Proposed architecture; implementation not started |
-| Target | Native Kotlin Android, min API 26 |
+| Target | Native Kotlin Android, min API 26; compile SDK API 37.2; target SDK API 36 |
 
 ## 1. Architecture principles
 
@@ -245,7 +245,7 @@ Play Billing integration is confined to the Play-distributed build. A Google Pla
 ## 15. Build, signing and CI
 
 - Kotlin + Android Gradle Plugin + Gradle wrapper + version catalog; pin compatible stable versions at first implementation.
-- `minSdk=26`; at the research date Play submissions require `targetSdk >= 36`. Recheck current Play target policy at each release. Proactively test API 37 permission behavior.
+- `minSdk=26`; the initial app foundation compiles against API 37.2 because stable Compose 1.12.1 metadata requires it, while `targetSdk=36` keeps Android 17/API 37 local-network runtime permission enforcement out of the initial target behaviour. Recheck current Play target policy at each release. When raising `targetSdk` to 37, implement and test `ACCESS_LOCAL_NETWORK` before enabling LAN discovery/control.
 - Lint/static checks, format, unit tests, protocol golden vectors, app build, instrumentation tests and artifact verification are mandatory CI gates.
 - Feature branches and pull requests only. No direct development commits to `main`; explicit user approval before each merge.
 - Signing private key kept out of repository. User owns the key; CI secrets protect signing material; offline encrypted backups retained. Use same signing identity for updates.
