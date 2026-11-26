@@ -5,7 +5,7 @@
 | Document ID | UR-ARCH-001 |
 | Version | 1.0 |
 | Date | 2026-11-26 |
-| Status | Proposed architecture; implementation not started |
+| Status | Architecture baseline; initial Android and IR foundation implemented |
 | Target | Native Kotlin Android, min API 26; compile SDK API 37.2; target SDK API 36 |
 
 ## 1. Architecture principles
@@ -161,7 +161,13 @@ A capability router selects a viable `(protocol, transport)` pair using model pr
 
 ### 7.1 Built-in IR
 
-Use `ConsumerIrManager` only after checking `PackageManager.FEATURE_CONSUMER_IR`, `hasIrEmitter()` and `getCarrierFrequencies()`. Its public API transmits alternating on/off microsecond timings at a selected carrier frequency and accepts patterns shorter than two seconds. It does not expose a general IR receive/learning API. Therefore, IR learning requires a supported external receiver/accessory; a built-in transmitter alone is insufficient.\n\nThe first implementation now includes `AndroidConsumerIrDriver` and `BuiltInIrTransmitter`. It checks the optional consumer-IR feature, reports the actual carrier-frequency ranges, validates positive carrier frequency and pulse durations, caps signal segments, rejects unknown carrier ranges and enforces the platform's under-two-second limit. Transmits are dispatched on an IO coroutine and serialised through a mutex because the built-in emitter is a shared half-duplex resource. The result `Sent` means Android's synchronous transmit call returned; it never means the appliance state was confirmed. Pure unit tests use a fake driver. Physical transmission still needs a phone with a built-in emitter and a verified device profile.
+Use `ConsumerIrManager` only after checking `PackageManager.FEATURE_CONSUMER_IR`, `hasIrEmitter()` and `getCarrierFrequencies()`. Its public API transmits alternating on/off microsecond timings at a selected carrier frequency and accepts patterns shorter than two seconds. It does not expose a general IR receive/learning API. Therefore, IR learning requires a supported external receiver/accessory; a built-in transmitter alone is insufficient.
+
+The first implementation now includes `AndroidConsumerIrDriver` and `BuiltInIrTransmitter`. It checks the optional consumer-IR feature, reports the actual carrier-frequency ranges, validates positive carrier frequency and pulse durations, caps signal segments, rejects unknown carrier ranges and enforces the platform's under-two-second limit. Transmits are dispatched on an IO coroutine and serialised through a mutex because the built-in emitter is a shared half-duplex resource. The result `Sent` means Android's synchronous transmit call returned; it never means the appliance state was confirmed. Pure unit tests use a fake driver. Physical transmission still needs a phone with a built-in emitter and a verified device profile.
+
+### 7.1.1 Implemented protocol encoder and profile layer
+
+The current branch independently implements typed NEC, extended NEC, Samsung32 and Sony SIRC12/15/20 encoders. It also provides immutable signal objects, a command dispatcher and model-specific IR profile/button data structures. Profile evidence is tracked per button, not per brand. Protocol-vector and profile-validation tests are required in CI. The encoder parameters do not constitute a brand/model code catalogue; no model-specific code set is bundled by this layer. See [IR Protocol Implementation and Data Policy](PROTOCOL_IMPLEMENTATION.md) for the protocol parameters, evidence rules, source references and licence policy.
 
 ### 7.2 External IR
 
