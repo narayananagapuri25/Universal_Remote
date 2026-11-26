@@ -29,7 +29,8 @@ The core remote functionality must operate offline. New devices require user app
 ## Android application foundation
 
 The `app/` module is the first native Android implementation foundation:
-- Kotlin with Android Gradle Plugin 9.5.3 and Gradle 9.9.1
+- Kotlin with Android Gradle Plugin 9.5.3 and Gradle 9.9.1 (pinned)
+- Minimum Android API 26; compile SDK API 37.2; target SDK API 36
 - Compose Material 3 UI shell with Devices, Discover and Settings
 - Room-backed local saved-device persistence
 - First-release category and command-safety domain types
@@ -40,7 +41,7 @@ The current UI intentionally does not claim device discovery, pairing or remote 
 
 ## Local build
 
-Install JDK 21, Android SDK Platform 36 and Gradle 9.9.1. Then run:
+Install JDK 21, Android SDK Platform API 37.2, Android SDK Platform API 36, Build Tools 36.0.0 and Gradle 9.9.1. Then run:
 
 ```bash
 gradle clean testDebugUnitTest lintDebug assembleDebug
