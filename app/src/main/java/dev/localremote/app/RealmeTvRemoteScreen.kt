@@ -676,7 +676,9 @@ fun RealmeTvRemoteScreen() {
                     }
                 }
             }
-        }        item {
+        }
+
+        item {
             Text(
                 "Compatibility note: the TV must have Android TV Remote Service enabled and expose the Android TV Remote v2 service. This build can be paired only after your actual TV completes the on-screen code handshake. Model-specific physical validation is still pending.",
                 style = MaterialTheme.typography.bodySmall,
