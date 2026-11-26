@@ -58,6 +58,7 @@ import dev.localremote.app.data.local.SavedIrProfileRepository
 import dev.localremote.app.platform.infrared.AndroidConsumerIrDriver
 import dev.localremote.app.platform.infrared.BuiltInIrTransmitter
 import dev.localremote.app.connectivity.infrared.protocol.ProtocolCommandDispatcher
+import dev.localremote.app.connectivity.infrared.protocol.ac.DaikinAcCommandDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -113,6 +114,9 @@ class MainActivity : ComponentActivity() {
                     profileRepository = app.irProfileRepository,
                     dispatcher = remember(irTransmitter) {
                         ProtocolCommandDispatcher(irTransmitter)
+                    },
+                    daikinDispatcher = remember(irTransmitter) {
+                        DaikinAcCommandDispatcher(irTransmitter)
                     }
                 )
             }
@@ -126,13 +130,15 @@ private fun OneRemoteApp(
     savedDevices: List<SavedDeviceEntity>,
     irHardware: IrHardwareStatus?,
     profileRepository: SavedIrProfileRepository,
-    dispatcher: ProtocolCommandDispatcher
+    dispatcher: ProtocolCommandDispatcher,
+    daikinDispatcher: DaikinAcCommandDispatcher
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var destination by rememberSaveable { mutableStateOf(Destination.DEVICES) }
     var openProfileId by rememberSaveable { mutableStateOf<String?>(null) }
+    var openDaikinAc by rememberSaveable { mutableStateOf(false) }
     var importState by remember { mutableStateOf<ImportState>(ImportState.Idle) }
     var importDisplayName by rememberSaveable { mutableStateOf("Imported remote") }
     var importBrand by rememberSaveable { mutableStateOf("Custom") }
@@ -240,14 +246,21 @@ private fun OneRemoteApp(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = if (openProfileId == null) "OneRemote"
-                        else (currentRemoteState as? RemoteLoadState.Loaded)?.profile?.displayName ?: "Remote",
+                        text = when {
+                            openDaikinAc -> "Daikin AC · Experimental"
+                            openProfileId != null ->
+                                (currentRemoteState as? RemoteLoadState.Loaded)?.profile?.displayName ?: "Remote"
+                            else -> "OneRemote"
+                        },
                         fontWeight = FontWeight.SemiBold
                     )
                 },
                 navigationIcon = {
-                    if (openProfileId != null) {
-                        OutlinedButton(onClick = { openProfileId = null }) {
+                    if (openProfileId != null || openDaikinAc) {
+                        OutlinedButton(onClick = {
+                            openProfileId = null
+                            openDaikinAc = false
+                        }) {
                             Text("Back")
                         }
                     }
@@ -255,7 +268,7 @@ private fun OneRemoteApp(
             )
         },
         bottomBar = {
-            if (openProfileId == null) {
+            if (openProfileId == null && !openDaikinAc) {
                 NavigationBar {
                     Destination.entries.forEach { item ->
                         NavigationBarItem(
@@ -275,7 +288,12 @@ private fun OneRemoteApp(
                 .padding(contentPadding),
             color = MaterialTheme.colorScheme.background
         ) {
-            if (openProfileId != null) {
+            if (openDaikinAc) {
+                DaikinAcRemoteScreen(
+                    irHardware = irHardware,
+                    dispatcher = daikinDispatcher
+                )
+            } else if (openProfileId != null) {
                 when (val remote = currentRemoteState) {
                     null, RemoteLoadState.Loading -> Column(
                         modifier = Modifier.fillMaxSize(),
@@ -310,6 +328,7 @@ private fun OneRemoteApp(
                     )
                     Destination.DISCOVER -> DiscoverScreen(
                         irHardware = irHardware,
+                        onOpenDaikinAc = { openDaikinAc = true },
                         importDisplayName = importDisplayName,
                         onDisplayNameChange = { importDisplayName = it },
                         importBrand = importBrand,
@@ -450,6 +469,7 @@ private fun DevicesScreen(
 @Composable
 private fun DiscoverScreen(
     irHardware: IrHardwareStatus?,
+    onOpenDaikinAc: () -> Unit,
     importDisplayName: String,
     onDisplayNameChange: (String) -> Unit,
     importBrand: String,
@@ -514,6 +534,36 @@ private fun DiscoverScreen(
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
+                    }
+                }
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                )
+            ) {
+                Column(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        "Experimental Daikin AC controls",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        "A dedicated full-state remote for two documented Daikin IR transport families. This is not a universal Daikin profile and has not been physically tested.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedButton(
+                        onClick = onOpenDaikinAc,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Open experimental AC remote")
                     }
                 }
             }
