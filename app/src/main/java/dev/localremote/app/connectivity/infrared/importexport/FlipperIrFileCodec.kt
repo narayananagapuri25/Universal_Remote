@@ -447,24 +447,29 @@ object FlipperIrFileCodec {
         val third: Int
     )
 
-    private fun encodeParsed(command: IrProtocolCommand): ParsedFields? = when (command) {
-        is IrProtocolCommand.Nec ->
-            ParsedFields("NEC", command.address, command.command)
-        is IrProtocolCommand.NecExtended ->
-            ParsedFields("NECext", command.address, command.command)
-        is IrProtocolCommand.Samsung32 ->
-            ParsedFields("Samsung32", command.address, command.command)
-        is IrProtocolCommand.SonySirc -> {
-            val address = when (command.variant) {
-                SonySircVariant.SIRC_12, SonySircVariant.SIRC_15 -> command.address
-                SonySircVariant.SIRC_20 -> command.address or ((command.extendedData ?: return null) shl 5)
+    private fun encodeParsed(command: IrProtocolCommand): ParsedFields? {
+        return when (command) {
+            is IrProtocolCommand.Nec ->
+                ParsedFields("NEC", command.address, command.command)
+            is IrProtocolCommand.NecExtended ->
+                ParsedFields("NECext", command.address, command.command)
+            is IrProtocolCommand.Samsung32 ->
+                ParsedFields("Samsung32", command.address, command.command)
+            is IrProtocolCommand.SonySirc -> {
+                val address = when (command.variant) {
+                    SonySircVariant.SIRC_12, SonySircVariant.SIRC_15 -> command.address
+                    SonySircVariant.SIRC_20 -> {
+                        val extended = command.extendedData ?: return null
+                        command.address or (extended shl 5)
+                    }
+                }
+                val protocol = when (command.variant) {
+                    SonySircVariant.SIRC_12 -> "SIRC"
+                    SonySircVariant.SIRC_15 -> "SIRC15"
+                    SonySircVariant.SIRC_20 -> "SIRC20"
+                }
+                ParsedFields(protocol, address, command.command)
             }
-            val protocol = when (command.variant) {
-                SonySircVariant.SIRC_12 -> "SIRC"
-                SonySircVariant.SIRC_15 -> "SIRC15"
-                SonySircVariant.SIRC_20 -> "SIRC20"
-            }
-            ParsedFields(protocol, address, command.command)
         }
     }
 }
