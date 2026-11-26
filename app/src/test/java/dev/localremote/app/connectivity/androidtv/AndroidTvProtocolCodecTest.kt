@@ -38,10 +38,10 @@ class AndroidTvProtocolCodecTest {
     fun pairingSecretMatchesKnownSha256Vector() {
         val (client, server) = publicKeyFixtures()
 
-        val secret = AndroidTvPairingSecret.calculate("441234", client, server)
+        val secret = AndroidTvPairingSecret.calculate("C00000", client, server)
 
         assertEquals(
-            "44b9a40f46e00835899299c59d664ce88073baa0f609ca2dd3866cdc538d535f",
+            "c04c3dc271c4cae277b81899a4a7550a269addc4916fe800628dfc7529b596ac",
             secret.toHex()
         )
     }
@@ -51,17 +51,19 @@ class AndroidTvProtocolCodecTest {
         val (client, server) = publicKeyFixtures()
 
         assertThrows(IllegalArgumentException::class.java) {
-            AndroidTvPairingSecret.calculate("451234", client, server)
+            AndroidTvPairingSecret.calculate("C10000", client, server)
         }
     }
 
     private fun publicKeyFixtures(): Pair<RSAPublicKey, RSAPublicKey> {
         val factory = KeyFactory.getInstance("RSA")
         val exponent = BigInteger.valueOf(65537)
+        // Fixed 1024-bit public moduli are accepted by the JCA RSA provider.
+        // These public values are test-only; no private key material is included.
         val client = factory.generatePublic(
             RSAPublicKeySpec(
                 BigInteger(
-                    "D3A5B7C9E1F2031425364758697A8B9CADBECFE0F102132435465768798A9BACBDCEDFF00112233445566778899AABBCCDDEEFF112233445566778899AABBCCD",
+                    "8492B88A224F254AC34B1F3F1B0E8E478A023CFC7F657493E9A6D9CB8CFA85CF77ABF38BF4B5319E891B08F9135669041D5925A705D1BC22089D6ED08B92E684EC775B16507F2F31ED7647460D3573E19F34BE7F105FAF0BDF82642C84A990BEBEDB2A54F99456577C40762910E082AF86C975879995BA893D4CB593CC497E55",
                     16
                 ),
                 exponent
@@ -70,7 +72,7 @@ class AndroidTvProtocolCodecTest {
         val server = factory.generatePublic(
             RSAPublicKeySpec(
                 BigInteger(
-                    "C7D9EBFD0F21334557697B8D9FA1B3C5D7E9FB0D1F31435567798B9DAFC1D3E5F7192B3D4F5163758799BADCFE1032547698BADCFEDCBA9876543210FEDCBA987654321",
+                    "93FCCE5B28B4980EE8640367D4AB2ABEB02746D626F2D65C2D754D046D8554B436793A3A6264962D924A7B5A897E0D1F587704C25D977EF7B93EAD1D5CB894AF769CAF5C493C14A76664B47825A200B57AA93E6A72F74B90568B86A4AD4836D45BB2E1215BF969867FF2BAE09532C5E854D582143DF5A999AB7213EDD867B4CF",
                     16
                 ),
                 exponent

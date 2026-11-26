@@ -522,11 +522,17 @@ class AndroidTvRemoteSession internal constructor(
 
         val started = ProtoReader.firstBytes(fields, 40)
         if (started != null) {
-            val power = ProtoReader.firstNumber(ProtoReader.parse(started), 1) == 1L
-            ready = true
+            val isStarted = ProtoReader.firstNumber(ProtoReader.parse(started), 1) == 1L
+            ready = isStarted
             mainHandler.post {
-                onPowerState(power)
-                onStatus("Connected to Android TV over your local Wi-Fi.")
+                onPowerState(isStarted)
+                onStatus(
+                    if (isStarted) {
+                        "Connected to Android TV over your local Wi-Fi."
+                    } else {
+                        "TV remote service is not ready."
+                    }
+                )
             }
             return
         }
