@@ -32,7 +32,8 @@ data class IrHardwareStatus(
  */
 class IrSignal(
     val carrierFrequencyHz: Int,
-    patternMicros: List<Int>
+    patternMicros: List<Int>,
+    val dutyCycle: Float = 0.33f
 ) {
     /**
      * Take a defensive snapshot so a caller cannot mutate a queued waveform
@@ -51,6 +52,9 @@ object IrSignalValidator {
     fun validate(signal: IrSignal): String? {
         if (signal.carrierFrequencyHz <= 0) {
             return "Carrier frequency must be positive."
+        }
+        if (!signal.dutyCycle.isFinite() || signal.dutyCycle <= 0f || signal.dutyCycle > 1f) {
+            return "IR duty cycle must be greater than 0 and at most 1."
         }
         if (signal.patternMicros.size < 2) {
             return "An IR pattern must contain at least one mark and one space."
@@ -71,7 +75,15 @@ object IrSignalValidator {
 }
 
 sealed interface IrTransmitResult {
-    data class Sent(val durationMicros: Long) : IrTransmitResult
+    data class Sent(
+        val durationMicros: Long,
+        /**
+         * ConsumerIrManager does not accept a duty-cycle parameter. This stays
+         * false for the built-in Android adapter; an accessory adapter may set it
+         * true only if it can guarantee the requested duty cycle.
+         */
+        val dutyCycleApplied: Boolean = false
+    ) : IrTransmitResult
     data object NoTransmitter : IrTransmitResult
     data class UnsupportedFrequency(
         val requestedHz: Int,
