@@ -354,6 +354,8 @@ private fun OneRemoteApp(
                     Destination.DEVICES -> DevicesScreen(
                         devices = savedDevices,
                         daikinProfiles = savedDaikinProfiles,
+                        onOpenTvRemote = { destination = Destination.TV_REMOTE },
+                        onDiscover = { destination = Destination.DISCOVER },
                         onOpenRemote = { profileId -> openProfileId = profileId },
                         onOpenDaikinAc = {
                             selectedDaikinProfileId = null
@@ -422,6 +424,8 @@ private fun OneRemoteApp(
 private fun DevicesScreen(
     devices: List<SavedDeviceEntity>,
     daikinProfiles: List<DaikinAcProfileEntity>,
+    onOpenTvRemote: () -> Unit,
+    onDiscover: () -> Unit,
     onOpenRemote: (String) -> Unit,
     onOpenDaikinAc: () -> Unit,
     onOpenDaikinProfile: (String) -> Unit
@@ -458,10 +462,23 @@ private fun DevicesScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            "Configured remotes stay on this phone and work offline. Add an imported IR remote from Discover.",
+                            "Set up a TV over Wi-Fi or import an IR remote. Your saved profiles stay on this phone and work offline.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = onOpenTvRemote,
+                                modifier = Modifier.weight(1f)
+                            ) { Text("Set up a TV") }
+                            OutlinedButton(
+                                onClick = onDiscover,
+                                modifier = Modifier.weight(1f)
+                            ) { Text("Import IR remote") }
+                        }
                     }
                 }
             }

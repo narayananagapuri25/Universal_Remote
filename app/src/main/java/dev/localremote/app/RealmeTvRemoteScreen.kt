@@ -297,7 +297,7 @@ fun AndroidTvRemoteScreen() {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    "TV Remote",
+                    "Control your TV",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -327,7 +327,7 @@ fun AndroidTvRemoteScreen() {
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                if (savedTv == null) "Pair once, then reconnect securely" else "Saved TV · " + savedTv!!.host,
+                                if (savedTv == null) "Pair once, then reconnect securely" else savedTv!!.name + " · " + savedTv!!.host,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -434,15 +434,25 @@ fun AndroidTvRemoteScreen() {
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                colors = CardDefaults.cardColors(
+                    containerColor = if (connected) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainer
+                    }
+                )
             ) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         if (connected) "Connected over Wi-Fi" else "Connection status",
                         fontWeight = FontWeight.SemiBold,
-                        color = if (connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        color = if (connected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                     )
-                    Text(status, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        status,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (connected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                    )
                     powerState?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                     volumeState?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 }
